@@ -74,7 +74,7 @@ Contributions are welcome\! If you have suggestions for improvements, new featur
 ## 🧑‍💻 Author
 
 **Sarash Sahu**
-🎓 MCA Final Year Project
+🎓 MCA Final Year 2025
 🔗 [LinkedIn](https://www.linkedin.com/in/sarashsahu)
 
 ---
