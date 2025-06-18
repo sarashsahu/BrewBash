@@ -342,20 +342,20 @@ function updateHealthDrop() {
 // Calculates game speed based on current score
 function getSpeedForScore(score) {
 
-    if (score < 1000) return 1.0; // Corresponds to 100 km/h (base speed)
-    if (score < 1500) return 1.5; // Approx 107.69 km/h - adjust as needed
+    if (score < 500) return 1.0; // Corresponds to 100 km/h (base speed)
+    if (score < 1000) return 1.5; // Approx 107.69 km/h - adjust as needed
     if (score < 2000) return 2.0; // Approx 115.38 km/h
-    if (score < 2500) return 2.5; // Approx 123.07 km/h
-    if (score < 3000) return 3.0; // Approx 130.76 km/h
-    if (score < 3500) return 3.5; // Approx 138.46 km/h
-    if (score < 4000) return 4.0; // Approx 146.15 km/h
-    if (score < 4500) return 4.5; // Approx 153.84 km/h
-    if (score < 5000) return 5.0; // Approx 161.53 km/h
-    if (score < 7500) return 5.5; // Let's keep increasing the base speed gradually
+    if (score < 3000) return 2.5; // Approx 123.07 km/h
+    if (score < 4000) return 3.0; // Approx 130.76 km/h
+    if (score < 5000) return 3.5; // Approx 138.46 km/h
+    if (score < 6000) return 4.0; // Approx 146.15 km/h
+    if (score < 7000) return 4.5; // Approx 153.84 km/h
+    if (score < 8000) return 5.0; // Approx 161.53 km/h
+    if (score < 10000) return 5.5; // Let's keep increasing the base speed gradually
     // Decrease speed
     if (score < 8500) return 4.5; // Decrease to match 450 km/h (need to adjust this multiplier)
     // Increase speed again
-    if (score < 10000) return 6.0; // Increase to match 550 km/h (need to adjust this multiplier)
+    if (score < 11000) return 6.0; // Increase to match 550 km/h (need to adjust this multiplier)
     // You can continue this pattern
     if (score < 12000) return 6.5;
     if (score < 14000) return 7.0;
