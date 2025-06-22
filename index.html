@@ -118,7 +118,7 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
-            /* margin-top: 20px; Removed as it's now part of main-game-area gap */
+            /* Removed as it's now part of main-game-area gap */
             width: 100%; /* Ensure buttons fill the container width */
         }
         .game-button {
@@ -149,8 +149,7 @@
             display: flex;
             justify-content: space-around;
             width: 100%;
-            /* margin-top: 20px;
-            margin-bottom: 20px; Removed as it's now part of main-game-area gap */
+            /* Removed as it's now part of main-game-area gap */
             gap: 10px;
         }
         .mobile-button {
@@ -236,13 +235,23 @@
         <div class="main-game-area">
             <canvas id="roadCanvas" width="350" height="600"></canvas>
             <div class="mobile-controls">
-                <button id="moveLeftBtn" class="mobile-button">◀</button>
-                <button id="moveRightBtn" class="mobile-button">▶</button>
+                <button id="moveLeftBtn" class="mobile-button"><-</button>
+                <button id="moveRightBtn" class="mobile-button">-></button>
             </div>
         </div>
         <div class="control-panel">
             <div class="game-info">
                 <h2>Brew Bash Mobile</h2>
+                            <div class="button-group">
+                <button id="playBtn" class="game-button">Play</button>
+                <button id="pauseBtn" class="game-button" disabled>Pause</button>
+                <button id="restartBtn" class="game-button">Restart</button>
+                <span style="font-weight: normal; font-size: 0.8rem; color: #a0aec0; text-align: center; margin-top: 10px;">Developed By </span>
+                <a href="https://www.instagram.com/sarashsahu" target="_blank" class="game-button" style="text-align: center;">@sarashsahu</a>
+            </div>
+            <br>
+            </div>
+
                 <div class="stats-item">
                     <span>Score:</span>
                     <span id="hudScore">0</span>
@@ -261,15 +270,6 @@
                 <div class="progress-bar">
                     <div id="healthBarFill" class="progress-fill" style="width: 100%; background-color: limegreen;"></div>
                 </div>
-                <br>
-            </div>
-                <div class="button-group">
-                <button id="playBtn" class="game-button">Play</button>
-                <button id="pauseBtn" class="game-button" disabled>Pause</button>
-                <button id="restartBtn" class="game-button">Restart</button>
-                <span style="font-weight: normal; font-size: 0.8rem; color: #a0aec0; text-align: center; margin-top: 10px;">Developed By ⬇️</span>
-                <a href="https://www.instagram.com/sarashsahu" target="_blank" class="game-button" style="text-align: center;">@sarashsahu</a>
-            </div>
             </div>
         </div>
     </div>
@@ -412,6 +412,21 @@
         canvas.addEventListener('touchstart', handleCanvasTouch);
         canvas.addEventListener('mousedown', handleCanvasClick); // For mouse clicks on desktop/laptops
 
+        // New: Event listeners to stop car movement when touch/click is released or mouse leaves
+        canvas.addEventListener('mouseup', () => {
+            keys.left = false;
+            keys.right = false;
+        });
+        canvas.addEventListener('touchend', () => {
+            keys.left = false;
+            keys.right = false;
+        });
+        canvas.addEventListener('mouseleave', () => { // For mouse users, if they drag out of canvas
+            keys.left = false;
+            keys.right = false;
+        });
+
+
         playBtn.addEventListener('click', () => {
             if (gameOver || countdownActive) return;
             if (paused) {
@@ -475,7 +490,7 @@
         moveRightBtn.addEventListener('touchend', (e) => { e.preventDefault(); keys.right = false; });
         moveRightBtn.addEventListener('mousedown', () => { if (!gameOver && !paused) keys.right = true; });
         moveRightBtn.addEventListener('mouseup', () => { keys.right = false; });
-        moveRightBtn.addEventListener('mouseleave', () => { keys.left = false; });
+        moveRightBtn.addEventListener('mouseleave', () => { keys.right = false; });
 
         function showGameOverOverlay() {
             finalScoreSpan.textContent = score;
@@ -708,11 +723,6 @@
         }
 
         function updateCar(deltaTime) {
-            // No direct update from keys here, as car movement is now click/tap-driven on canvas
-            // The car movement based on keys (ArrowLeft/Right, A/D) is handled by the keydown/keyup events.
-            // If you want to entirely replace keyboard controls with touch/click, you would remove those listeners.
-            // For now, I'll keep them as an alternative or for desktop play.
-            
             const movementAmount = (baseCarMoveSpeed / 1000) * deltaTime;
 
             if (keys.left) carOffsetX = Math.max(0, carOffsetX - movementAmount);
@@ -750,42 +760,34 @@
         }
 
         // Logic for Canvas Tap/Click Movement
-        let tapTargetX = null; // Stores the target X position for the car to move towards
-
         function handleCanvasClick(e) {
             if (gameOver || paused || countdownActive) return;
-            e.preventDefault(); // Prevent default browser actions like text selection
+            e.preventDefault();
             const rect = canvas.getBoundingClientRect();
-            const clickX = e.clientX - rect.left; // X coordinate relative to canvas
+            const clickX = e.clientX - rect.left;
 
-            // Calculate current car center
-            const currentCarXCenter = carBaseX + carOffsetX + (carWidth / 2);
-
-            // Determine target for car based on click location
-            // If click is on the left half of the road (relative to car center or road center)
-            if (clickX < currentCarXCenter) {
-                tapTargetX = Math.max(0, clickX - (carWidth / 2) - carBaseX); // Move car left
+            if (clickX < canvas.width / 2) {
+                keys.left = true;
+                keys.right = false;
             } else {
-                tapTargetX = Math.min(maxOffset, clickX - (carWidth / 2) - carBaseX); // Move car right
+                keys.right = true;
+                keys.left = false;
             }
         }
 
         function handleCanvasTouch(e) {
             if (gameOver || paused || countdownActive) return;
-            e.preventDefault(); // Prevent default browser actions (like scrolling/zooming)
+            e.preventDefault();
             const touch = e.touches[0];
             const rect = canvas.getBoundingClientRect();
-            const touchX = touch.clientX - rect.left; // X coordinate relative to canvas
+            const touchX = touch.clientX - rect.left;
 
-            // Calculate current car center
-            const currentCarXCenter = carBaseX + carOffsetX + (carWidth / 2);
-
-            // Determine target for car based on touch location
-            // If touch is on the left half of the road (relative to car center or road center)
-            if (touchX < currentCarXCenter) {
-                tapTargetX = Math.max(0, touchX - (carWidth / 2) - carBaseX); // Move car left
+            if (touchX < canvas.width / 2) {
+                keys.left = true;
+                keys.right = false;
             } else {
-                tapTargetX = Math.min(maxOffset, touchX - (carWidth / 2) - carBaseX); // Move car right
+                keys.right = true;
+                keys.left = false;
             }
         }
 
@@ -848,24 +850,7 @@
             const deltaTime = Math.min(timestamp - lastTimestamp, MAX_DELTA_TIME);
             lastTimestamp = timestamp; // Update lastTimestamp for the next frame
 
-            // Update car position based on tapTargetX
-            if (tapTargetX !== null) {
-                const currentCarX = carBaseX + carOffsetX;
-                const moveAmount = (baseCarMoveSpeed / 1000) * deltaTime * 1.5; // Slightly faster movement towards tap
-                
-                if (Math.abs(tapTargetX - currentCarX) < moveAmount) {
-                    carOffsetX = tapTargetX;
-                    tapTargetX = null; // Reached target, stop moving
-                } else if (tapTargetX > currentCarX) {
-                    carOffsetX += moveAmount;
-                } else {
-                    carOffsetX -= moveAmount;
-                }
-                carOffsetX = Math.max(0, Math.min(maxOffset, carOffsetX)); // Clamp to road boundaries
-            }
-
-            // Also allow keyboard movement if keys are pressed
-            updateCar(deltaTime); // This still processes keyboard inputs if available
+            updateCar(deltaTime); // This now handles both keyboard and canvas click/touch inputs
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
