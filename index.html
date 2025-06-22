@@ -7,7 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
         /* Import the 'Press Start 2P' font for a video game feel */
-        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start 2P&display=swap');
         
         body {
             /* Apply the video game font to the entire body */
@@ -25,7 +25,7 @@
         }
         .game-wrapper {
             display: flex;
-            flex-direction: column;
+            flex-direction: column; /* Default to column for small screens */
             align-items: center;
             gap: 20px;
             background-color: #2d3748;
@@ -38,10 +38,19 @@
         }
         @media (min-width: 768px) {
             .game-wrapper {
-                flex-direction: row;
+                flex-direction: row; /* Row for larger screens */
                 max-width: none;
                 width: auto;
             }
+        }
+
+        .main-game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px; /* Space between canvas and buttons */
+            width: 350px; /* Match canvas width */
+            max-width: 100%;
         }
 
         canvas {
@@ -54,6 +63,7 @@
             max-width: 100%;
             height: auto; /* Allow height to adjust based on aspect ratio */
             object-fit: contain;
+            touch-action: pan-y; /* Allow vertical scrolling on canvas if it overflows, but not horizontal panning/zooming */
         }
 
         .control-panel {
@@ -69,11 +79,7 @@
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
             flex-grow: 1;
         }
-        @media (min-width: 768px) {
-            .control-panel {
-                width: 350px; /* Keep consistent on larger screens */
-            }
-        }
+        /* No specific @media for control-panel width, it will adapt */
 
         .game-info h2 {
             font-size: 1.1rem; /* Adjusted for pixel font readability */
@@ -112,7 +118,8 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
-            margin-top: 20px;
+            /* margin-top: 20px; Removed as it's now part of main-game-area gap */
+            width: 100%; /* Ensure buttons fill the container width */
         }
         .game-button {
             background-color: #4299e1;
@@ -142,8 +149,8 @@
             display: flex;
             justify-content: space-around;
             width: 100%;
-            margin-top: 20px;
-            margin-bottom: 20px;
+            /* margin-top: 20px;
+            margin-bottom: 20px; Removed as it's now part of main-game-area gap */
             gap: 10px;
         }
         .mobile-button {
@@ -226,13 +233,14 @@
 </head>
 <body>
     <div class="game-wrapper">
-        <canvas id="roadCanvas" width="350" height="600"></canvas>
-        <div class="control-panel">
+        <div class="main-game-area">
+            <canvas id="roadCanvas" width="350" height="600"></canvas>
             <div class="mobile-controls">
                 <button id="moveLeftBtn" class="mobile-button">◀</button>
                 <button id="moveRightBtn" class="mobile-button">▶</button>
             </div>
-
+        </div>
+        <div class="control-panel">
             <div class="game-info">
                 <h2>Brew Bash Mobile</h2>
                 <div class="stats-item">
@@ -253,16 +261,18 @@
                 <div class="progress-bar">
                     <div id="healthBarFill" class="progress-fill" style="width: 100%; background-color: limegreen;"></div>
                 </div>
-            <div class="button-group">
+                <br>
+            </div>
+                <div class="button-group">
                 <button id="playBtn" class="game-button">Play</button>
                 <button id="pauseBtn" class="game-button" disabled>Pause</button>
                 <button id="restartBtn" class="game-button">Restart</button>
                 <span style="font-weight: normal; font-size: 0.8rem; color: #a0aec0; text-align: center; margin-top: 10px;">Developed By ⬇️</span>
                 <a href="https://www.instagram.com/sarashsahu" target="_blank" class="game-button" style="text-align: center;">@sarashsahu</a>
             </div>
+            </div>
         </div>
     </div>
-</div>
 
     <div id="nameInputOverlay" class="overlay">
         <div class="overlay-content">
@@ -305,6 +315,8 @@
         let healthDrop = null;
         let animationId = null;
         let paused = true;
+        let countdownActive = false;
+        let countdownStartTime = 0; // Initialize to 0
 
         let healthDrop25PercentGiven = false;
 
@@ -327,7 +339,7 @@
         const hudScore = document.getElementById('hudScore');
         const hudSpeed = document.getElementById('hudSpeed');
         const speedBarFill = document.getElementById('speedBarFill');
-        const hudHealthValue = document.getElementById('hudHealthValue'); // Corrected variable name
+        const hudHealthValue = document.getElementById('hudHealthValue');
         const healthBarFill = document.getElementById('healthBarFill');
 
         const moveLeftBtn = document.getElementById('moveLeftBtn');
@@ -396,16 +408,17 @@
         collectSound.addEventListener('play', duckBackgroundMusic);
         collectSound.addEventListener('ended', unduckBackgroundMusic);
 
-        canvas.addEventListener('touchstart', handleTouchStart);
-        canvas.addEventListener('touchmove', handleTouchMove);
+        // Event Listeners for mobile/touch input on canvas
+        canvas.addEventListener('touchstart', handleCanvasTouch);
+        canvas.addEventListener('mousedown', handleCanvasClick); // For mouse clicks on desktop/laptops
 
         playBtn.addEventListener('click', () => {
-            if (gameOver) return;
+            if (gameOver || countdownActive) return;
             if (paused) {
-                paused = false;
-                backgroundMusic.play(); // Start background music
-                animate(performance.now());
+                countdownActive = true;
+                countdownStartTime = 0; // Reset to 0 so countdownAnimation initializes it with requestAnimationFrame's timestamp
                 updateButtonStates();
+                requestAnimationFrame(countdownAnimation);
             }
         });
 
@@ -420,11 +433,12 @@
 
         restartBtn.addEventListener('click', () => {
             resetGame();
-            paused = false;
-            backgroundMusic.play(); // Start background music on restart
+            paused = true; // Start in paused state with countdown on play
+            backgroundMusic.pause(); // Ensure music is paused before restart
+            backgroundMusic.currentTime = 0; // Reset music to start
             if (animationId) cancelAnimationFrame(animationId);
-            animate(performance.now());
             updateButtonStates();
+            // No immediate animate() call, relies on Play button
         });
 
         document.addEventListener('keydown', e => {
@@ -450,6 +464,7 @@
             if (animationId) cancelAnimationFrame(animationId);
         });
 
+        // Keep direct button controls if needed, or remove if canvas controls are primary
         moveLeftBtn.addEventListener('touchstart', (e) => { e.preventDefault(); if (!gameOver && !paused) keys.left = true; });
         moveLeftBtn.addEventListener('touchend', (e) => { e.preventDefault(); keys.left = false; });
         moveLeftBtn.addEventListener('mousedown', () => { if (!gameOver && !paused) keys.left = true; });
@@ -460,7 +475,7 @@
         moveRightBtn.addEventListener('touchend', (e) => { e.preventDefault(); keys.right = false; });
         moveRightBtn.addEventListener('mousedown', () => { if (!gameOver && !paused) keys.right = true; });
         moveRightBtn.addEventListener('mouseup', () => { keys.right = false; });
-        moveRightBtn.addEventListener('mouseleave', () => { keys.right = false; });
+        moveRightBtn.addEventListener('mouseleave', () => { keys.left = false; });
 
         function showGameOverOverlay() {
             finalScoreSpan.textContent = score;
@@ -470,11 +485,12 @@
         }
 
         function updateButtonStates() {
-            playBtn.disabled = !paused || gameOver;
-            pauseBtn.disabled = paused || gameOver;
+            playBtn.disabled = !paused || gameOver || countdownActive;
+            pauseBtn.disabled = paused || gameOver || countdownActive;
             restartBtn.disabled = false;
-            moveLeftBtn.disabled = paused || gameOver;
-            moveRightBtn.disabled = paused || gameOver;
+            // Mobile movement buttons are now controlled by canvas taps primarily, but these can still be used.
+            moveLeftBtn.disabled = paused || gameOver || countdownActive; 
+            moveRightBtn.disabled = paused || gameOver || countdownActive;
         }
 
         function spawnLamppost() {
@@ -692,6 +708,11 @@
         }
 
         function updateCar(deltaTime) {
+            // No direct update from keys here, as car movement is now click/tap-driven on canvas
+            // The car movement based on keys (ArrowLeft/Right, A/D) is handled by the keydown/keyup events.
+            // If you want to entirely replace keyboard controls with touch/click, you would remove those listeners.
+            // For now, I'll keep them as an alternative or for desktop play.
+            
             const movementAmount = (baseCarMoveSpeed / 1000) * deltaTime;
 
             if (keys.left) carOffsetX = Math.max(0, carOffsetX - movementAmount);
@@ -728,49 +749,126 @@
             updateHUDDisplay();
         }
 
-        let touchStartX = 0;
-        function handleTouchStart(e) {
-            if (gameOver || paused) return;
-            // Prevent default touch behavior to avoid zooming
-            if (e.target.tagName === 'CANVAS') {
-                e.preventDefault();
+        // Logic for Canvas Tap/Click Movement
+        let tapTargetX = null; // Stores the target X position for the car to move towards
+
+        function handleCanvasClick(e) {
+            if (gameOver || paused || countdownActive) return;
+            e.preventDefault(); // Prevent default browser actions like text selection
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left; // X coordinate relative to canvas
+
+            // Calculate current car center
+            const currentCarXCenter = carBaseX + carOffsetX + (carWidth / 2);
+
+            // Determine target for car based on click location
+            // If click is on the left half of the road (relative to car center or road center)
+            if (clickX < currentCarXCenter) {
+                tapTargetX = Math.max(0, clickX - (carWidth / 2) - carBaseX); // Move car left
+            } else {
+                tapTargetX = Math.min(maxOffset, clickX - (carWidth / 2) - carBaseX); // Move car right
             }
-            touchStartX = e.touches[0].clientX;
         }
 
-        function handleTouchMove(e) {
-            if (gameOver || paused) return;
-            // Prevent default touch behavior to avoid zooming
-            if (e.target.tagName === 'CANVAS') {
-                e.preventDefault();
+        function handleCanvasTouch(e) {
+            if (gameOver || paused || countdownActive) return;
+            e.preventDefault(); // Prevent default browser actions (like scrolling/zooming)
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const touchX = touch.clientX - rect.left; // X coordinate relative to canvas
+
+            // Calculate current car center
+            const currentCarXCenter = carBaseX + carOffsetX + (carWidth / 2);
+
+            // Determine target for car based on touch location
+            // If touch is on the left half of the road (relative to car center or road center)
+            if (touchX < currentCarXCenter) {
+                tapTargetX = Math.max(0, touchX - (carWidth / 2) - carBaseX); // Move car left
+            } else {
+                tapTargetX = Math.min(maxOffset, touchX - (carWidth / 2) - carBaseX); // Move car right
             }
-            const touchMoveX = e.touches[0].clientX;
-            const deltaX = touchMoveX - touchStartX;
-
-            const touchSensitivityFactor = 0.5;
-
-            const movementAmount = (baseCarMoveSpeed / 1000) * Math.abs(deltaX) * touchSensitivityFactor;
-
-            if (deltaX > 0) {
-                carOffsetX = Math.min(maxOffset, carOffsetX + movementAmount);
-            } else if (deltaX < 0) {
-                carOffsetX = Math.max(0, carOffsetX - movementAmount);
-            }
-            touchStartX = touchMoveX;
         }
 
-        let lastTimestamp = 0;
+        // Countdown Logic
+        function drawCountdown(number) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'; // Semi-transparent background for countdown
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.font = 'bold 100px "Press Start 2P", cursive';
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(number, canvas.width / 2, canvas.height / 2);
+        }
+
+        function countdownAnimation(timestamp) {
+            // Initialize countdownStartTime on the very first frame of countdown
+            if (countdownStartTime === 0) {
+                 countdownStartTime = timestamp;
+            }
+            
+            const elapsed = timestamp - countdownStartTime;
+            const remainingTime = 3000 - elapsed; // 3000 ms = 3 seconds
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawRoad(); // Draw background elements
+            drawCar();
+            updateHUDDisplay();
+
+            if (remainingTime > 2000) {
+                drawCountdown(3);
+            } else if (remainingTime > 1000) {
+                drawCountdown(2);
+            } else if (remainingTime > 0) {
+                drawCountdown(1);
+            } else {
+                // Countdown finished
+                countdownActive = false;
+                paused = false;
+                backgroundMusic.play();
+                updateButtonStates();
+                lastTimestamp = timestamp; // Reset lastTimestamp for smooth start of game loop
+                animate(timestamp); // Start the main game loop
+                return;
+            }
+            requestAnimationFrame(countdownAnimation);
+        }
+
+        let lastTimestamp = 0; // Global
 
         function animate(timestamp) {
-            if (paused || gameOver) return;
+            // Initialize lastTimestamp on the very first frame or after a hard reset
+            if (lastTimestamp === 0) {
+                lastTimestamp = timestamp;
+            }
+
+            if (paused || gameOver || countdownActive) return;
 
             const MAX_DELTA_TIME = 100;
             const deltaTime = Math.min(timestamp - lastTimestamp, MAX_DELTA_TIME);
-            lastTimestamp = timestamp;
+            lastTimestamp = timestamp; // Update lastTimestamp for the next frame
+
+            // Update car position based on tapTargetX
+            if (tapTargetX !== null) {
+                const currentCarX = carBaseX + carOffsetX;
+                const moveAmount = (baseCarMoveSpeed / 1000) * deltaTime * 1.5; // Slightly faster movement towards tap
+                
+                if (Math.abs(tapTargetX - currentCarX) < moveAmount) {
+                    carOffsetX = tapTargetX;
+                    tapTargetX = null; // Reached target, stop moving
+                } else if (tapTargetX > currentCarX) {
+                    carOffsetX += moveAmount;
+                } else {
+                    carOffsetX -= moveAmount;
+                }
+                carOffsetX = Math.max(0, Math.min(maxOffset, carOffsetX)); // Clamp to road boundaries
+            }
+
+            // Also allow keyboard movement if keys are pressed
+            updateCar(deltaTime); // This still processes keyboard inputs if available
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            updateCar(deltaTime);
             drawRoad();
             updateLampposts(deltaTime);
             updateHealthDrop(deltaTime);
