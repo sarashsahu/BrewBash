@@ -1,326 +1,758 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>BREW BASH 🍺</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drunk Dodge</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
-        * {
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c;
+            color: #e2e8f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
             margin: 0;
-            padding: 0;
+            overflow: hidden;
+            padding: 10px;
             box-sizing: border-box;
         }
-
-        body {
-            background: linear-gradient(to bottom, #121212, #1e1e1e);
-            color: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden;
-            user-select: none;
-        }
-
-        #container {
+        .game-wrapper {
             display: flex;
-            height: 100vh;
-            flex-direction: row;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            background-color: #2d3748;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+            max-width: 95vw;
+            width: fit-content;
+            margin: auto;
+        }
+        @media (min-width: 768px) {
+            .game-wrapper {
+                flex-direction: row;
+                max-width: none;
+                width: auto;
+            }
         }
 
         canvas {
-            flex: 1;
-            display: block;
             background-color: #000;
-            border-left: 4px solid #333;
-            border-right: 4px solid #333;
+            display: block;
+            border-radius: 10px;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+            width: 350px;
+            height: 600px;
+            max-width: 100%;
+            height: auto;
+            object-fit: contain;
         }
 
-        #scoreboard, #controlPanel {
-            width: 360px;
-            padding: 30px;
-            background: radial-gradient(circle at top, #2b2b2b, #1b1b1b);
-            box-shadow: 0 0 12px rgba(0, 0, 0, 0.6);
-            overflow-y: auto;
+        .control-panel {
             display: flex;
             flex-direction: column;
-            justify-content: space-between; /* This helps push the timer to the bottom */
-        }
-
-        #scoreboard {
-            border-left: 4px solid #444;
-        }
-
-        #controlPanel {
-            border-right: 4px solid #444;
-        }
-
-        #scoreboard h2, #controlPanel h2 {
-            text-align: center;
-            margin-bottom: 24px;
-            font-size: 25px;
-            color: #ffcc00;
-            text-shadow: 2px 2px #000;
-            font-family: 'Cinzel', serif;
-        }
-
-        #controlPanel h2 {
-            color: #00ffcc;
-        }
-
-        #highScoresList {
-            list-style: none;
-            font-size: 15px;
-            line-height: 1.8;
-            padding: 0 10px;
-        }
-
-        #highScoresList li {
-            padding: 8px 14px;
-            background-color: rgba(255, 255, 255, 0.06);
-            margin-bottom: 10px;
+            justify-content: space-between;
+            background-color: #4a5568;
+            padding: 20px;
             border-radius: 10px;
-            font-family: 'Georgia', serif;
-            border-left: 4px solid transparent;
-            transition: 0.3s ease;
+            width: 100%;
+            max-width: 250px;
+            min-width: 200px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            flex-grow: 1;
+        }
+        @media (min-width: 768px) {
+            .control-panel {
+                width: 250px;
+            }
         }
 
-        #highScoresList li:hover {
-            background-color: rgba(255, 255, 255, 0.12);
-            transform: scale(1.03);
-        }
-
-        #highScoresList li:nth-child(1) {
-            color: #00ffd5;
+        .game-info h2 {
+            font-size: 1.3rem; /* Made smaller */
             font-weight: bold;
-            background-color: rgba(0, 255, 213, 0.15);
-            border-left-color: #00ffd5;
-        }
-
-        #buttonContainer {
+            margin-bottom: 10px; /* Adjusted margin */
+            color: #a0aec0;
             text-align: center;
-            margin-top: 20px; /* Added margin for spacing */
         }
-
-        .game-button { /* Shared style for game control buttons */
-            font-size: 16px;
-            padding: 10px 18px;
-            margin: 6px;
-            border-radius: 8px;
-            border: none;
-            background: linear-gradient(145deg, #00bfff, #0099cc);
+        .stats-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px; /* Adjusted margin */
+            font-size: 1rem; /* Made smaller */
+        }
+        .stats-item span:first-child {
+            font-weight: bold;
+            color: #cbd5e0;
+        }
+        .progress-bar {
+            background-color: #6a748c;
+            border-radius: 5px;
+            height: 10px; /* Made smaller */
+            width: 100%;
+            overflow: hidden;
+            margin-top: 3px; /* Adjusted margin */
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background-color: lightgreen;
+            border-radius: 5px;
+            transition: width 0.2s ease-in-out, background-color 0.2s ease-in-out;
+        }
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .game-button {
+            background-color: #4299e1;
             color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 1.1rem;
             font-weight: bold;
             cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-            transition: 0.3s ease;
+            transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            border: none;
+            width: 100%;
         }
-
-        .game-button:hover {
-            background: linear-gradient(145deg, #0099cc, #007bb6); /* Darker blue on hover */
+        .game-button:hover:not(:disabled) {
+            background-color: #3182ce;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
         }
-
         .game-button:disabled {
-            background: linear-gradient(145deg, #555, #333);
+            background-color: #a0aec0;
             cursor: not-allowed;
-            box-shadow: none;
+            opacity: 0.7;
         }
-
-        #nameInputOverlay {
-            position: absolute;
+        .mobile-controls {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            margin-top: 20px; /* Adjusted margin to move it closer to game-info/canvas */
+            margin-bottom: 20px; /* Adjusted margin to separate from button-group */
+            gap: 10px;
+        }
+        .mobile-button {
+            background-color: #ed8936;
+            color: white;
+            padding: 18px 35px;
+            border-radius: 50%;
+            font-size: 1.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            border: none;
+            min-width: 70px;
+            min-height: 70px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .mobile-button:hover:not(:disabled) {
+            background-color: #dd6b20;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
+        }
+        .mobile-button:disabled {
+            background-color: #a0aec0;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        .overlay {
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(10, 10, 10, 0.85);
+            background-color: rgba(0, 0, 0, 0.7);
             display: none;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
-            z-index: 10;
+            align-items: center;
+            z-index: 1000;
         }
-
-        #nameInputOverlay div {
-            margin: 12px 0;
-        }
-
-        #finalScore {
-            font-weight: bold;
-            color: #00ffee;
-            font-size: 24px;
-        }
-
-        input, button#submitName { /* Apply consistent style to input and submit button */
-            padding: 12px 20px;
-            font-size: 18px;
-            border: none;
-            border-radius: 12px;
-            outline: none;
-            font-family: 'Georgia', serif;
-        }
-
-        input {
-            width: 260px;
+        .overlay-content {
+            background-color: #2d3748;
+            padding: 30px;
+            border-radius: 15px;
             text-align: center;
-            background-color: #222;
-            color: #eee;
-            border: 2px solid #555;
-            margin-bottom: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            max-width: 90%;
+            width: 400px;
         }
-
-        button#submitName {
-            background: linear-gradient(145deg, #ff4c4c, #cc0000); /* Red gradient for submit */
+        .overlay-content h2 {
+            font-size: 2rem;
+            color: #e2e8f0;
+            margin-bottom: 15px;
+        }
+        .overlay-content p {
+            font-size: 1.2rem;
+            color: #cbd5e0;
+            margin-bottom: 20px;
+        }
+        .overlay-content button {
+            background-color: #48bb78;
             color: white;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 1.2rem;
             font-weight: bold;
             cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-            transition: 0.3s ease;
+            transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+            border: none;
         }
-
-        button#submitName:hover {
-            background: linear-gradient(145deg, #cc0000, #990000);
-        }
-
-        .overlay-title {
-            font-size: 38px;
-            color: #ff4c4c;
-            text-shadow: 2px 2px #000;
-            font-family: 'Cinzel', serif;
-        }
-
-        .overlay-subtitle, .overlay-label {
-            font-size: 20px;
-            color: #ccc;
-            font-family: 'Georgia', serif;
-        }
-
-        /* --- New/Updated CSS for HUD in Control Panel --- */
-        .hud-info {
-            background-color: rgba(255, 255, 255, 0.08);
-            border-radius: 10px;
-            padding: 15px;
-            margin-top: 20px; /* Adjusted margin to provide spacing from h2 */
-            text-align: left;
-            font-size: 18px;
-            line-height: 1.6;
-            font-family: 'Georgia', serif;
-            box-shadow: inset 0 0 8px rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .hud-label {
-            font-weight: bold;
-            color: #00ffcc;
-            margin-right: 8px;
-        }
-
-        .hud-value {
-            color: #ffcc00;
-        }
-
-        .progress-bar-container {
-            width: 100%;
-            height: 15px;
-            background-color: #333;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-top: 5px;
-            border: 1px solid #555;
-            box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
-        }
-
-        .progress-bar-fill {
-            height: 100%;
-            background-color: limegreen; /* Default for health */
-            width: 100%; /* Will be set by JS */
-            border-radius: 8px;
-            transition: width 0.3s ease-out, background-color 0.3s ease-out;
-        }
-
-        .speed-text {
-            color: white;
-            font-size: 14px;
-            text-align: center;
-            position: relative;
-            top: -15px; /* Adjust to center vertically on bar */
-            text-shadow: 1px 1px 2px black;
-        }
-
-        @media (max-width: 768px) {
-            #container {
-                flex-direction: column;
-            }
-
-            #controlPanel,
-            #scoreboard {
-                width: 100%;
-                height: 220px;
-                overflow-y: auto;
-                border: none;
-                box-shadow: none;
-            }
-
-            canvas {
-                height: calc(100vh - 440px);
-            }
-
-            .game-button {
-                font-size: 14px;
-                padding: 8px 14px;
-                margin: 4px;
-            }
+        .overlay-content button:hover {
+            background-color: #38a169;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
         }
     </style>
 </head>
 <body>
-    <div id="container">
-        <div id="controlPanel">
-            <h2>BREW BASH 🍺</h2>
-            <div class="hud-info">
-                <div class="hud-item">
-                    <span class="hud-label">🎯 Score:</span> <span id="hudScore" class="hud-value">0</span>
-                </div>
-                <div class="hud-item">
-                    <span class="hud-label">🚗 Speed:</span> <span id="hudSpeed" class="hud-value">100 km/h</span>
-                    <div class="progress-bar-container">
-                        <div id="speedBarFill" class="progress-bar-fill" style="background-color: lightgreen;"></div>
-                    </div>
-                </div>
-                <div class="hud-item">
-                    <span class="hud-label">❤️ Health:</span> <span id="hudHealthValue" class="hud-value">100%</span>
-                    <div class="progress-bar-container">
-                        <div id="healthBarFill" class="progress-bar-fill"></div>
-                    </div>
-                </div>
+    <div class="game-wrapper">
+        <canvas id="roadCanvas" width="350" height="600"></canvas>
+        <div class="control-panel">
+            <!-- Mobile controls moved to the top of the control panel -->
+            <div class="mobile-controls">
+                <button id="moveLeftBtn" class="mobile-button">◀</button>
+                <button id="moveRightBtn" class="mobile-button">▶</button>
             </div>
-            <div id="buttonContainer">
-                <button id="playBtn" class="game-button">▶️ Play</button>
-                <button id="pauseBtn" class="game-button">⏸️ Pause</button>
-                <button id="restartBtn" class="game-button">🔄 Restart</button>
-            </div>
-        </div>
 
-        <canvas id="roadCanvas" width="1000" height="800"></canvas>
-
-        <div id="scoreboard">
-            <div>
-                <h2>🏆 Top High Scores</h2>
-                <ol id="highScoresList"></ol>
-            </div>
-            <div class="hud-info" style="margin-top: auto; margin-bottom: 0;">
-                <span class="hud-label">⏰ Next Reset In:</span>
-                <span id="resetTimer" class="hud-value">Calculating...</span>
+            <div class="game-info">
+                <h2>Brew Bash Mobile</h2>
+                <div class="stats-item">
+                    <span>Score:</span>
+                    <span id="hudScore">0</span>
+                </div>
+                <div class="stats-item">
+                    <span>Speed:</span>
+                    <span id="hudSpeed">0 km/h</span>
+                </div>
+                <div class="progress-bar">
+                    <div id="speedBarFill" class="progress-fill" style="width: 0%; background-color: lightgreen;"></div>
+                </div>
+                <div class="stats-item mt-4">
+                    <span>Health:</span>
+                    <span id="hudHealthValue">100%</span>
+                </div>
+                <div class="progress-bar">
+                    <div id="healthBarFill" class="progress-fill" style="width: 100%; background-color: limegreen;"></div>
+                </div>
+            <div class="button-group">
+                <button id="playBtn" class="game-button">Play</button>
+                <button id="pauseBtn" class="game-button" disabled>Pause</button>
+                <button id="restartBtn" class="game-button">Restart</button>
+                <span style="font-weight: bold;">Developed By ⬇️</span>
+                 <a href="https://www.instagram.com/sarashsahu" target="_blank" class="game-button">@sarashsahu</a>
             </div>
         </div>
     </div>
+</div>
 
-    <div id="nameInputOverlay">
-        <div class="overlay-title">Game Over!</div>
-        <div class="overlay-subtitle">Your Score: <span id="finalScore">0</span></div>
-        <div class="overlay-subtitle">Don't Drink and Drive!</div>
-        <div class="overlay-label">Enter your name to record your score:</div>
-        <input type="text" id="nameInput" maxlength="15" placeholder="Your name" />
-        <button id="submitName">Submit Score</button>
+    <div id="nameInputOverlay" class="overlay">
+        <div class="overlay-content">
+            <h2>Game Over!</h2>
+            <p>Your Score: <span id="finalScore">0</span></p>
+            <p>Better luck next time!</p>
+            <button id="closeOverlayBtn">OK</button>
+        </div>
     </div>
 
-    <script src="game.js"></script>
+    <script>
+        const canvas = document.getElementById('roadCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const roadWidth = 300;
+        const centerX = canvas.width / 2;
+        const carWidth = 50;
+        const carHeight = 110;
+        const carY = canvas.height - carHeight - 140;
+        const carBaseX = centerX - roadWidth / 2 + 20;
+        const maxOffset = roadWidth - carWidth - 40;
+
+        const baseCarMoveSpeed = 400;
+        const baseObstacleSpeed = 200;
+
+        let carOffsetX = 0;
+        let dashOffset = 0;
+        let score = 0;
+        let health = 100;
+        let gameOver = false;
+        let lampposts = [];
+        let gameSpeedMultiplier = 1;
+        let lastLamppostY = -200;
+        const keys = { left: false, right: false };
+        let healthDrop = null;
+        let animationId = null;
+        let paused = true;
+
+        let healthDrop25PercentGiven = false;
+
+        let carBlinkActive = false;
+        let carBlinkStartTime = 0;
+        const CAR_BLINK_DURATION = 1500;
+        const CAR_BLINK_INTERVAL = 100;
+
+        let blindEffectActive = false;
+        let blindEffectStartTime = 0;
+        const BLIND_EFFECT_DURATION = 2000;
+
+        const nameOverlay = document.getElementById('nameInputOverlay');
+        const finalScoreSpan = document.getElementById('finalScore');
+        const closeOverlayBtn = document.getElementById('closeOverlayBtn');
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const restartBtn = document.getElementById('restartBtn');
+
+        const hudScore = document.getElementById('hudScore');
+        const hudSpeed = document.getElementById('hudSpeed');
+        const speedBarFill = document.getElementById('speedBarFill');
+        const hudHealthValue = document = document.getElementById('hudHealthValue');
+        const healthBarFill = document.getElementById('healthBarFill');
+
+        const moveLeftBtn = document.getElementById('moveLeftBtn');
+        const moveRightBtn = document.getElementById('moveRightBtn');
+
+        let carImageLoaded = false;
+        let beerImageLoaded = false;
+        let heartImageLoaded = false;
+
+        const carImage = new Image();
+        carImage.src = 'car.png'; // Replace with your car image URL
+        carImage.onload = () => carImageLoaded = true;
+        carImage.onerror = () => {
+            console.error("Failed to load car image, using fallback.");
+            carImageLoaded = false;
+        };
+
+        const beerImage = new Image();
+        beerImage.src = 'beer.png'; // Replace with your beer image URL
+        beerImage.onload = () => beerImageLoaded = true;
+        beerImage.onerror = () => {
+            console.error("Failed to load beer image, using fallback.");
+            beerImageLoaded = false;
+        };
+
+        const heartImage = new Image();
+        heartImage.src = 'heart.png'; // Replace with your heart image URL
+        heartImage.onload = () => heartImageLoaded = true;
+        heartImage.onerror = () => {
+            console.error("Failed to load heart image, using fallback.");
+            heartImageLoaded = false;
+        };
+
+        const crashSound = new Audio('crash.mp3'); // Replace with your crash sound URL
+        crashSound.volume = 0.5;
+        crashSound.onerror = () => console.error("Failed to load crash sound.");
+
+        const gameOverSound = new Audio('gameover.mp3'); // Replace with your game over sound URL
+        gameOverSound.volume = 0.5;
+        gameOverSound.onerror = () => console.error("Failed to load game over sound.");
+
+        const collectSound = new Audio('health.mp3');
+        collectSound.volume = 0.5;
+        collectSound.onerror = () => console.error("Failed to load collect sound.");
+
+        canvas.addEventListener('touchstart', handleTouchStart);
+        canvas.addEventListener('touchmove', handleTouchMove);
+
+        playBtn.addEventListener('click', () => {
+            if (gameOver) return;
+            if (paused) {
+                paused = false;
+                animate(performance.now());
+                updateButtonStates();
+            }
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            if (!gameOver && !paused) {
+                paused = true;
+                if (animationId) cancelAnimationFrame(animationId);
+                updateButtonStates();
+            }
+        });
+
+        restartBtn.addEventListener('click', () => {
+            resetGame();
+            paused = false;
+            if (animationId) cancelAnimationFrame(animationId);
+            animate(performance.now());
+            updateButtonStates();
+        });
+
+        document.addEventListener('keydown', e => {
+            const typing = ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
+            if (!typing) {
+                if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
+                if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = true;
+            }
+        });
+
+        document.addEventListener('keyup', e => {
+            if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = false;
+            if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = false;
+        });
+
+        closeOverlayBtn.addEventListener('click', () => {
+            nameOverlay.style.display = 'none';
+            resetGame();
+            paused = true;
+            updateButtonStates();
+            if (animationId) cancelAnimationFrame(animationId);
+        });
+
+        moveLeftBtn.addEventListener('touchstart', () => { if (!gameOver && !paused) keys.left = true; });
+        moveLeftBtn.addEventListener('touchend', () => { keys.left = false; });
+        moveLeftBtn.addEventListener('mousedown', () => { if (!gameOver && !paused) keys.left = true; });
+        moveLeftBtn.addEventListener('mouseup', () => { keys.left = false; });
+        moveLeftBtn.addEventListener('mouseleave', () => { keys.left = false; });
+
+        moveRightBtn.addEventListener('touchstart', () => { if (!gameOver && !paused) keys.right = true; });
+        moveRightBtn.addEventListener('touchend', () => { keys.right = false; });
+        moveRightBtn.addEventListener('mousedown', () => { if (!gameOver && !paused) keys.right = true; });
+        moveRightBtn.addEventListener('mouseup', () => { keys.right = false; });
+        moveRightBtn.addEventListener('mouseleave', () => { keys.right = false; });
+
+        function showGameOverOverlay() {
+            finalScoreSpan.textContent = score;
+            nameOverlay.style.display = 'flex';
+            updateButtonStates();
+        }
+
+        function updateButtonStates() {
+            playBtn.disabled = !paused || gameOver;
+            pauseBtn.disabled = paused || gameOver;
+            restartBtn.disabled = false;
+            moveLeftBtn.disabled = paused || gameOver;
+            moveRightBtn.disabled = paused || gameOver;
+        }
+
+        function spawnLamppost() {
+            const spacing = Math.random() * 150 + 200;
+            lastLamppostY -= spacing;
+            const x = carBaseX + Math.random() * (roadWidth - 40);
+            lampposts.push({ x, y: lastLamppostY, checked: false });
+        }
+
+        function rectCircleColliding(cx, cy, r, rx, ry, rw, rh) {
+            const dx = Math.abs(cx - rx - rw / 2);
+            const dy = Math.abs(cy - ry - rh / 2);
+            if (dx > rw / 2 + r || dy > rh / 2 + r) return false;
+            if (dx <= rw / 2 || dy <= rh / 2) return true;
+            const dx2 = dx - rw / 2;
+            const dy2 = dy - rh / 2;
+            return dx2 * dx2 + dy2 * dy2 <= r * r;
+        }
+
+        function updateLampposts(deltaTime) {
+            if (!gameOver && (lampposts.length === 0 || canvas.height - lastLamppostY > 200)) {
+                spawnLamppost();
+            }
+
+            const carX = carBaseX + carOffsetX;
+            for (let i = lampposts.length - 1; i >= 0; i--) {
+                const l = lampposts[i];
+                l.y += (gameSpeedMultiplier * baseObstacleSpeed / 1000) * deltaTime;
+
+                if (beerImageLoaded) {
+                    const imgWidth = 20;
+                    const imgHeight = 30;
+                    ctx.drawImage(beerImage, l.x - imgWidth / 2, l.y - imgHeight / 2, imgWidth, imgHeight);
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(l.x, l.y, 6, 0, Math.PI * 2);
+                    ctx.fillStyle = '#FFD700';
+                    ctx.fill();
+                }
+
+                if (!l.checked && !carBlinkActive && rectCircleColliding(l.x, l.y, 10, carX, carY, carWidth, carHeight)) {
+                    l.checked = true;
+                    crashSound.currentTime = 0;
+                    crashSound.play();
+                    health -= 25;
+
+                    carBlinkActive = true;
+                    carBlinkStartTime = Date.now();
+
+                    updateHUDDisplay();
+
+                    if (health <= 0) {
+                        health = 0;
+                        gameOver = true;
+                        paused = true;
+                        crashSound.pause();
+                        crashSound.currentTime = 0;
+                        gameOverSound.currentTime = 0;
+                        gameOverSound.play();
+                        if (animationId) cancelAnimationFrame(animationId);
+                        showGameOverOverlay();
+                    }
+                }
+
+                if (health === 25 && !healthDrop25PercentGiven && (!healthDrop || !healthDrop.active)) {
+                    const dropX = carBaseX + Math.random() * maxOffset;
+                    healthDrop = { x: dropX, y: -50, active: true };
+                    healthDrop25PercentGiven = true;
+                }
+
+                if (l.y > canvas.height + 10) {
+                    lampposts.splice(i, 1);
+                    if (!l.checked && !gameOver) {
+                        score += 50;
+                        gameSpeedMultiplier = getSpeedForScore(score);
+                        updateHUDDisplay();
+                    }
+                }
+            }
+        }
+
+        function updateHealthDrop(deltaTime) {
+            if (!healthDrop || !healthDrop.active) return;
+
+            healthDrop.y += (gameSpeedMultiplier * baseObstacleSpeed / 1000) * deltaTime;
+
+            if (heartImageLoaded) {
+                const imgWidth = 20;
+                const imgHeight = 20;
+                ctx.drawImage(heartImage, healthDrop.x - imgWidth / 2, healthDrop.y - imgHeight / 2, imgWidth, imgHeight);
+            } else {
+                ctx.font = '24px serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('💖', healthDrop.x, healthDrop.y);
+            }
+
+            const carX = carBaseX + carOffsetX;
+            if (
+                healthDrop.active &&
+                healthDrop.y >= carY &&
+                healthDrop.y <= carY + carHeight &&
+                healthDrop.x >= carX &&
+                healthDrop.x <= carX + carWidth
+            ) {
+                const dropAmount = 25;
+                health = Math.min(health + dropAmount, 100);
+                healthDrop.active = false;
+                collectSound.currentTime = 0;
+                collectSound.play();
+                updateHUDDisplay();
+            }
+
+            if (healthDrop.y > canvas.height) {
+                healthDrop.active = false;
+            }
+        }
+
+        function getSpeedForScore(score) {
+            if (score < 500) return 1.0;
+            if (score < 1000) return 1.2;
+            if (score < 2000) return 1.4;
+            if (score < 3000) return 1.6;
+            if (score < 4000) return 1.8;
+            if (score < 5000) return 2.0;
+            if (score < 6000) return 2.2;
+            if (score < 7000) return 2.4;
+            if (score < 8000) return 2.6;
+            if (score < 10000) return 2.8;
+            if (score < 12000) return 3.0;
+            if (score < 14000) return 3.2;
+            if (score < 16000) return 3.4;
+            if (score < 18000) return 3.6;
+            if (score < 20000) return 3.8;
+
+            return 4.0;
+        }
+
+        function drawRoad() {
+            ctx.fillStyle = '#222';
+            ctx.fillRect(centerX - roadWidth / 2, 0, roadWidth, canvas.height);
+
+            ctx.strokeStyle = '#ccc';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(centerX - roadWidth / 2, 0);
+            ctx.lineTo(centerX - roadWidth / 2, canvas.height);
+            ctx.moveTo(centerX + roadWidth / 2, 0);
+            ctx.lineTo(centerX + roadWidth / 2, canvas.height);
+            ctx.stroke();
+
+            ctx.setLineDash([30, 30]);
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.lineDashOffset = -dashOffset;
+            ctx.beginPath();
+            ctx.moveTo(centerX, 0);
+            ctx.lineTo(centerX, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        function drawCar() {
+            const x = carBaseX + carOffsetX;
+
+            if (carBlinkActive) {
+                const currentTime = Date.now();
+                const elapsedTime = currentTime - carBlinkStartTime;
+
+                if (elapsedTime > CAR_BLINK_DURATION) {
+                    carBlinkActive = false;
+                } else {
+                    if (Math.floor(elapsedTime / CAR_BLINK_INTERVAL) % 2 === 0) {
+                        if (carImageLoaded) {
+                            ctx.drawImage(carImage, x, carY, carWidth, carHeight);
+                        } else {
+                            ctx.fillStyle = 'red';
+                            ctx.fillRect(x, carY, carWidth, carHeight);
+                        }
+                    }
+                    return;
+                }
+            }
+
+            if (carImageLoaded) {
+                ctx.drawImage(carImage, x, carY, carWidth, carHeight);
+            } else {
+                ctx.fillStyle = 'red';
+                ctx.fillRect(x, carY, carWidth, carHeight);
+            }
+        }
+
+        function updateHUDDisplay() {
+            hudScore.textContent = score;
+
+            const kmPerHourBase = 100;
+            const actualSpeed = Math.round(gameSpeedMultiplier * kmPerHourBase);
+            hudSpeed.textContent = `${actualSpeed} km/h`;
+
+            const maxBarSpeed = getSpeedForScore(20000) * kmPerHourBase;
+            const speedPercentage = Math.min(100, (actualSpeed / maxBarSpeed) * 100);
+            speedBarFill.style.width = `${speedPercentage}%`;
+            let speedBarColor = 'lightgreen';
+            if (actualSpeed >= kmPerHourBase * 3.0) speedBarColor = 'red';
+            else if (actualSpeed >= kmPerHourBase * 2.0) speedBarColor = 'orange';
+            else if (actualSpeed >= kmPerHourBase * 1.5) speedBarColor = 'yellow';
+            speedBarFill.style.backgroundColor = speedBarColor;
+
+            hudHealthValue.textContent = `${health}%`;
+            const healthPercentage = (health / 100) * 100;
+            healthBarFill.style.width = `${healthPercentage}%`;
+            let healthBarColor = 'limegreen';
+            if (health <= 25) healthBarColor = 'red';
+            else if (health <= 50) healthBarColor = 'orange';
+            healthBarFill.style.backgroundColor = healthBarColor;
+        }
+
+        function updateCar(deltaTime) {
+            const movementAmount = (baseCarMoveSpeed / 1000) * deltaTime;
+
+            if (keys.left) carOffsetX = Math.max(0, carOffsetX - movementAmount);
+            if (keys.right) carOffsetX = Math.min(maxOffset, carOffsetX + movementAmount);
+        }
+
+        function resetGame() {
+            score = 0;
+            health = 100;
+            gameOver = false;
+            lampposts = [];
+            gameSpeedMultiplier = getSpeedForScore(0);
+            lastLamppostY = -200;
+            carOffsetX = 0;
+            dashOffset = 0;
+            healthDrop = null;
+            healthDrop25PercentGiven = false;
+
+            blindEffectActive = false;
+            blindEffectStartTime = 0;
+
+            carBlinkActive = false;
+            carBlinkStartTime = 0;
+
+            crashSound.pause();
+            crashSound.currentTime = 0;
+            gameOverSound.pause();
+            gameOverSound.currentTime = 0;
+            collectSound.pause();
+            collectSound.currentTime = 0;
+
+            nameOverlay.style.display = 'none';
+            updateButtonStates();
+            updateHUDDisplay();
+        }
+
+        let touchStartX = 0;
+        function handleTouchStart(e) {
+            if (gameOver || paused) return;
+            touchStartX = e.touches[0].clientX;
+        }
+
+        function handleTouchMove(e) {
+            if (gameOver || paused) return;
+            const touchMoveX = e.touches[0].clientX;
+            const deltaX = touchMoveX - touchStartX;
+
+            const touchSensitivityFactor = 0.5;
+
+            const movementAmount = (baseCarMoveSpeed / 1000) * Math.abs(deltaX) * touchSensitivityFactor;
+
+            if (deltaX > 0) {
+                carOffsetX = Math.min(maxOffset, carOffsetX + movementAmount);
+            } else if (deltaX < 0) {
+                carOffsetX = Math.max(0, carOffsetX - movementAmount);
+            }
+            touchStartX = touchMoveX;
+        }
+
+        let lastTimestamp = 0;
+
+        function animate(timestamp) {
+            if (paused || gameOver) return;
+
+            const MAX_DELTA_TIME = 100;
+            const deltaTime = Math.min(timestamp - lastTimestamp, MAX_DELTA_TIME);
+            lastTimestamp = timestamp;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            updateCar(deltaTime);
+            drawRoad();
+            updateLampposts(deltaTime);
+            updateHealthDrop(deltaTime);
+            drawCar();
+
+            if (blindEffectActive) {
+                const currentTime = Date.now();
+                const elapsedTime = currentTime - blindEffectStartTime;
+                if (elapsedTime < BLIND_EFFECT_DURATION) {
+                    const opacity = 0.8 * (1 - (elapsedTime / BLIND_EFFECT_DURATION));
+                    ctx.fillStyle = `rgba(0, 0, 0, ${opacity})`;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                } else {
+                    blindEffectActive = false;
+                }
+            }
+
+            updateHUDDisplay();
+
+            const dashSpeedFactor = 0.5;
+            dashOffset = (dashOffset + (gameSpeedMultiplier * baseObstacleSpeed / 1000) * deltaTime * dashSpeedFactor) % 60;
+
+            animationId = requestAnimationFrame(animate);
+        }
+
+        window.onload = () => {
+            updateButtonStates();
+            updateHUDDisplay();
+        };
+    </script>
 </body>
 </html>
