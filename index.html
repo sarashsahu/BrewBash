@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drunk Dodge</title>
+    <title>Brew Bash Mobile</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        /* Import the 'Press Start 2P' font for a video game feel */
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
         body {
-            font-family: 'Inter', sans-serif;
+            /* Apply the video game font to the entire body */
+            font-family: 'Press Start 2P', cursive;
             background-color: #1a202c;
             color: #e2e8f0;
             display: flex;
@@ -49,7 +52,7 @@
             width: 350px;
             height: 600px;
             max-width: 100%;
-            height: auto;
+            height: auto; /* Allow height to adjust based on aspect ratio */
             object-fit: contain;
         }
 
@@ -73,9 +76,9 @@
         }
 
         .game-info h2 {
-            font-size: 1.3rem; /* Made smaller */
-            font-weight: bold;
-            margin-bottom: 10px; /* Adjusted margin */
+            font-size: 1.1rem; /* Adjusted for pixel font readability */
+            font-weight: normal; /* Pixel fonts often don't have bold variants */
+            margin-bottom: 10px;
             color: #a0aec0;
             text-align: center;
         }
@@ -83,20 +86,20 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px; /* Adjusted margin */
-            font-size: 1rem; /* Made smaller */
+            margin-bottom: 8px;
+            font-size: 0.85rem; /* Adjusted for pixel font readability */
         }
         .stats-item span:first-child {
-            font-weight: bold;
+            font-weight: normal; /* Pixel fonts often don't have bold variants */
             color: #cbd5e0;
         }
         .progress-bar {
             background-color: #6a748c;
             border-radius: 5px;
-            height: 10px; /* Made smaller */
+            height: 10px;
             width: 100%;
             overflow: hidden;
-            margin-top: 3px; /* Adjusted margin */
+            margin-top: 3px;
         }
         .progress-fill {
             height: 100%;
@@ -116,8 +119,8 @@
             color: white;
             padding: 10px 20px;
             border-radius: 8px;
-            font-size: 1.1rem;
-            font-weight: bold;
+            font-size: 0.9rem; /* Adjusted for pixel font readability */
+            font-weight: normal; /* Pixel fonts often don't have bold variants */
             cursor: pointer;
             transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
@@ -138,8 +141,8 @@
             display: flex;
             justify-content: space-around;
             width: 100%;
-            margin-top: 20px; /* Adjusted margin to move it closer to game-info/canvas */
-            margin-bottom: 20px; /* Adjusted margin to separate from button-group */
+            margin-top: 20px;
+            margin-bottom: 20px;
             gap: 10px;
         }
         .mobile-button {
@@ -147,8 +150,8 @@
             color: white;
             padding: 18px 35px;
             border-radius: 50%;
-            font-size: 1.8rem;
-            font-weight: bold;
+            font-size: 1.5rem; /* Adjusted for pixel font readability */
+            font-weight: normal; /* Pixel fonts often don't have bold variants */
             cursor: pointer;
             transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
@@ -191,12 +194,12 @@
             width: 400px;
         }
         .overlay-content h2 {
-            font-size: 2rem;
+            font-size: 1.8rem; /* Adjusted for pixel font readability */
             color: #e2e8f0;
             margin-bottom: 15px;
         }
         .overlay-content p {
-            font-size: 1.2rem;
+            font-size: 1rem; /* Adjusted for pixel font readability */
             color: #cbd5e0;
             margin-bottom: 20px;
         }
@@ -205,8 +208,8 @@
             color: white;
             padding: 12px 25px;
             border-radius: 8px;
-            font-size: 1.2rem;
-            font-weight: bold;
+            font-size: 1rem; /* Adjusted for pixel font readability */
+            font-weight: normal; /* Pixel fonts often don't have bold variants */
             cursor: pointer;
             transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
             border: none;
@@ -252,8 +255,8 @@
                 <button id="playBtn" class="game-button">Play</button>
                 <button id="pauseBtn" class="game-button" disabled>Pause</button>
                 <button id="restartBtn" class="game-button">Restart</button>
-                <span style="font-weight: bold;">Developed By ⬇️</span>
-                 <a href="https://www.instagram.com/sarashsahu" target="_blank" class="game-button">@sarashsahu</a>
+                <span style="font-weight: normal; font-size: 0.8rem; color: #a0aec0; text-align: center; margin-top: 10px;">Developed By ⬇️</span>
+                <a href="https://www.instagram.com/sarashsahu" target="_blank" class="game-button">@sarashsahu</a>
             </div>
         </div>
     </div>
@@ -261,13 +264,12 @@
 
     <div id="nameInputOverlay" class="overlay">
         <div class="overlay-content">
-            <h2>Game Over!</h2>
+            <h2 style="color: red;">Game Over!</h2>
             <p>Your Score: <span id="finalScore">0</span></p>
-            <p>Better luck next time!</p>
+            <p>Don't Drink and Drive!</p>
             <button id="closeOverlayBtn">OK</button>
         </div>
     </div>
-
     <script>
         const canvas = document.getElementById('roadCanvas');
         const ctx = canvas.getContext('2d');
