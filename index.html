@@ -233,16 +233,16 @@
 <body>
     <div class="game-wrapper">
         <div class="main-game-area">
-            <canvas id="roadCanvas" width="350" height="600"></canvas>
+            <canvas id="roadCanvas" width="350" height="550"></canvas>
             <div class="mobile-controls">
-                <button id="moveLeftBtn" class="mobile-button"><-</button>
-                <button id="moveRightBtn" class="mobile-button">-></button>
+                <button id="moveLeftBtn" class="mobile-button"><</button>
+                <button id="moveRightBtn" class="mobile-button">></button>
             </div>
         </div>
         <div class="control-panel">
             <div class="game-info">
                 <h2>Brew Bash Mobile</h2>
-                            <div class="button-group">
+                <div class="button-group">
                 <button id="playBtn" class="game-button">Play</button>
                 <button id="pauseBtn" class="game-button" disabled>Pause</button>
                 <button id="restartBtn" class="game-button">Restart</button>
@@ -277,8 +277,14 @@
     <div id="nameInputOverlay" class="overlay">
         <div class="overlay-content">
             <h2 style="color: red;">Game Over!</h2>
-            <p>Your Score: <span id="finalScore">0</span></p>
+            <p>Your Score: <span id="finalScore" style="color: #38a169;">0</span></p>
             <p>Don't Drink and Drive!</p>
+            <span style="font-weight: normal; font-size: 0.8rem; color: #a0aec0; text-align: center; margin-top: 10px;">Any Feedback? DM! </span>
+            <br>
+            <br>
+            <a href="https://www.instagram.com/sarashsahu" target="_blank" class="game-button" style="text-align: center;">@sarashsahu</a>
+            <br>
+            <br>
             <button id="closeOverlayBtn">OK</button>
         </div>
     </div>
@@ -296,7 +302,7 @@
         const centerX = canvas.width / 2;
         const carWidth = 50;
         const carHeight = 110;
-        const carY = canvas.height - carHeight - 140;
+        const carY = canvas.height - carHeight - 60;
         const carBaseX = centerX - roadWidth / 2 + 20;
         const maxOffset = roadWidth - carWidth - 40;
 
