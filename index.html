@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,10 +20,10 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            /* Removed overflow: hidden; to allow scrolling for the start screen */
+            overflow: hidden; /* Restore overflow: hidden to body to prevent general scrolling */
             padding: 10px;
             box-sizing: border-box;
-            flex-direction: column; /* Allow content to stack vertically for scrolling */
+            flex-direction: column; 
         }
         .game-wrapper {
             display: flex;
@@ -66,8 +67,7 @@
             max-width: 100%;
             height: auto; /* Allow height to adjust based on aspect ratio */
             object-fit: contain;
-            /* Removed touch-action: pan-y to prevent canvas from interfering with page scrolling */
-            /* touch-action: none; might be used if all touch interaction on canvas should be disabled */
+            /* touch-action: pan-y was removed, no longer needed as canvas isn't primarily for scrolling the page */
         }
 
         .control-panel {
@@ -122,8 +122,7 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
-            /* Removed as it's now part of main-game-area gap */
-            width: 100%; /* Ensure buttons fill the container width */
+            width: 100%;
         }
         .game-button {
             background-color: #4299e1;
@@ -153,7 +152,6 @@
             display: flex;
             justify-content: space-around;
             width: 100%;
-            /* Removed as it's now part of main-game-area gap */
             gap: 10px;
         }
         .mobile-button {
@@ -251,6 +249,7 @@
             text-align: center;
             padding: 20px;
             box-sizing: border-box;
+            cursor: pointer; /* Indicate it's clickable */
         }
 
         #startScreenOverlay h1 {
@@ -270,21 +269,13 @@
             0% { transform: scale(1); }
             100% { transform: scale(1.05); }
         }
-
-        /* Hidden scroll-trigger div */
-        #scrollTrigger {
-            height: 100vh; /* Make body scrollable by this amount */
-            width: 100%;
-            opacity: 0; /* Make it invisible */
-            pointer-events: none; /* Do not interfere with clicks/touches */
-        }
     </style>
 </head>
 <body>
     <div id="startScreenOverlay">
         <h1>Brew Bash Mobile</h1>
         <p>A Game by @sarashsahu</p>
-        <p style="margin-top: 50px;">Scroll Down to Start</p>
+        <p style="margin-top: 50px;">Tap / Click to Start</p>
         <p style="font-size: 0.9rem; color: #718096; position: absolute; bottom: 20px;">Use A/D or Left/Right Arrows to move</p>
     </div>
 
@@ -351,8 +342,6 @@
         Your browser does not support the audio element.
     </audio>
 
-    <div id="scrollTrigger"></div>
-
     <script>
         const canvas = document.getElementById('roadCanvas');
         const ctx = canvas.getContext('2d');
@@ -400,7 +389,7 @@
         const playBtn = document.getElementById('playBtn');
         const pauseBtn = document.getElementById('pauseBtn');
         const restartBtn = document.getElementById('restartBtn');
-        const startScreenOverlay = document.getElementById('startScreenOverlay'); // New reference
+        const startScreenOverlay = document.getElementById('startScreenOverlay'); // Reference to start screen
 
         const hudScore = document.getElementById('hudScore');
         const hudSpeed = document.getElementById('hudSpeed');
@@ -474,30 +463,11 @@
         collectSound.addEventListener('play', duckBackgroundMusic);
         collectSound.addEventListener('ended', unduckBackgroundMusic);
 
-        // Removed Event Listeners for mobile/touch input on canvas and mousedown for canvas
-        // canvas.addEventListener('touchstart', handleCanvasTouch);
-        // canvas.addEventListener('mousedown', handleCanvasClick); 
-
-        // Removed event listeners to stop car movement when touch/click is released or mouse leaves for canvas
-        // canvas.addEventListener('mouseup', () => {
-        //     keys.left = false;
-        //     keys.right = false;
-        // });
-        // canvas.addEventListener('touchend', () => {
-        //     keys.left = false;
-        //     keys.right = false;
-        // });
-        // canvas.addEventListener('mouseleave', () => { 
-        //     keys.left = false;
-        //     keys.right = false;
-        // });
-
-
         playBtn.addEventListener('click', () => {
-            if (gameOver || countdownActive || startScreenOverlay.style.display === 'flex') return; // Also disabled if start screen is active
+            if (gameOver || countdownActive || startScreenOverlay.style.display === 'flex') return;
             if (paused) {
                 countdownActive = true;
-                countdownStartTime = 0; // Reset to 0 so countdownAnimation initializes it with requestAnimationFrame's timestamp
+                countdownStartTime = 0;
                 updateButtonStates();
                 requestAnimationFrame(countdownAnimation);
             }
@@ -506,7 +476,7 @@
         pauseBtn.addEventListener('click', () => {
             if (!gameOver && !paused) {
                 paused = true;
-                backgroundMusic.pause(); // Pause background music
+                backgroundMusic.pause();
                 if (animationId) cancelAnimationFrame(animationId);
                 updateButtonStates();
             }
@@ -514,18 +484,12 @@
 
         restartBtn.addEventListener('click', () => {
             resetGame();
-            paused = true; // Start in paused state with countdown on play
-            backgroundMusic.pause(); // Ensure music is paused before restart
-            backgroundMusic.currentTime = 0; // Reset music to start
+            paused = true;
+            backgroundMusic.pause();
+            backgroundMusic.currentTime = 0;
             if (animationId) cancelAnimationFrame(animationId);
             startScreenOverlay.style.display = 'flex'; // Show start screen on restart
-            window.scrollTo(0, 0); // Scroll to top for start screen
-            if (!scrollListenerAdded) {
-                window.addEventListener('scroll', handleScrollToStart);
-                scrollListenerAdded = true;
-            }
             updateButtonStates();
-            // No immediate animate() call, relies on Play button
         });
 
         document.addEventListener('keydown', e => {
@@ -545,19 +509,13 @@
             nameOverlay.style.display = 'none';
             resetGame();
             paused = true;
-            backgroundMusic.pause(); // Pause background music when game over overlay is closed
-            backgroundMusic.currentTime = 0; // Reset music
-            startScreenOverlay.style.display = 'flex'; // Show start screen when game over overlay is closed
-            window.scrollTo(0, 0); // Scroll to top to ensure scroll-to-start works again
-            if (!scrollListenerAdded) {
-                window.addEventListener('scroll', handleScrollToStart);
-                scrollListenerAdded = true;
-            }
+            backgroundMusic.pause();
+            backgroundMusic.currentTime = 0;
+            startScreenOverlay.style.display = 'flex'; // Show start screen on game over close
             updateButtonStates();
             if (animationId) cancelAnimationFrame(animationId);
         });
 
-        // Keep direct button controls if needed, or remove if canvas controls are primary
         moveLeftBtn.addEventListener('touchstart', (e) => { e.preventDefault(); if (!gameOver && !paused && startScreenOverlay.style.display !== 'flex') keys.left = true; });
         moveLeftBtn.addEventListener('touchend', (e) => { e.preventDefault(); keys.left = false; });
         moveLeftBtn.addEventListener('mousedown', () => { if (!gameOver && !paused && startScreenOverlay.style.display !== 'flex') keys.left = true; });
@@ -568,21 +526,19 @@
         moveRightBtn.addEventListener('touchend', (e) => { e.preventDefault(); keys.right = false; });
         moveRightBtn.addEventListener('mousedown', () => { if (!gameOver && !paused && startScreenOverlay.style.display !== 'flex') keys.right = true; });
         moveRightBtn.addEventListener('mouseup', () => { keys.right = false; });
-        moveRightBtn.addEventListener('mouseleave', () => { keys.right = false; });
+        moveRightBtn.addEventListener('mouseleave', () => { keys.left = false; });
 
         function showGameOverOverlay() {
             finalScoreSpan.textContent = score;
             nameOverlay.style.display = 'flex';
-            backgroundMusic.pause(); // Pause background music on game over
+            backgroundMusic.pause();
             updateButtonStates();
         }
 
         function updateButtonStates() {
-            // Play button is also disabled if the start screen is visible
             playBtn.disabled = !paused || gameOver || countdownActive || startScreenOverlay.style.display === 'flex';
             pauseBtn.disabled = paused || gameOver || countdownActive;
             restartBtn.disabled = false;
-            // Mobile movement buttons are now controlled by canvas taps primarily, but these can still be used.
             moveLeftBtn.disabled = paused || gameOver || countdownActive || startScreenOverlay.style.display === 'flex'; 
             moveRightBtn.disabled = paused || gameOver || countdownActive || startScreenOverlay.style.display === 'flex';
         }
@@ -834,19 +790,12 @@
             collectSound.currentTime = 0;
 
             nameOverlay.style.display = 'none';
-            // Do not hide start screen here; it's managed by scroll
-            // startScreenOverlay.style.display = 'flex'; // This might be needed if restart should show start screen
             updateButtonStates();
             updateHUDDisplay();
         }
 
-        // Removed Logic for Canvas Tap/Click Movement functions
-        // function handleCanvasClick(e) { /* ... */ }
-        // function handleCanvasTouch(e) { /* ... */ }
-
-        // Countdown Logic
         function drawCountdown(number) {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'; // Semi-transparent background for countdown
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             ctx.font = 'bold 100px "Press Start 2P", cursive';
@@ -857,16 +806,15 @@
         }
 
         function countdownAnimation(timestamp) {
-            // Initialize countdownStartTime on the very first frame of countdown
             if (countdownStartTime === 0) {
                  countdownStartTime = timestamp;
             }
             
             const elapsed = timestamp - countdownStartTime;
-            const remainingTime = 3000 - elapsed; // 3000 ms = 3 seconds
+            const remainingTime = 3000 - elapsed;
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawRoad(); // Draw background elements
+            drawRoad();
             drawCar();
             updateHUDDisplay();
 
@@ -877,22 +825,40 @@
             } else if (remainingTime > 0) {
                 drawCountdown(1);
             } else {
-                // Countdown finished
                 countdownActive = false;
                 paused = false;
                 backgroundMusic.play();
                 updateButtonStates();
-                lastTimestamp = timestamp; // Reset lastTimestamp for smooth start of game loop
-                animate(timestamp); // Start the main game loop
+                lastTimestamp = timestamp;
+                animate(timestamp);
                 return;
             }
             requestAnimationFrame(countdownAnimation);
         }
 
-        let lastTimestamp = 0; // Global
+        let lastTimestamp = 0;
+
+        // Function to handle click/tap on the start screen
+        function handleStartScreenClick() {
+            startScreenOverlay.style.display = 'none'; // Hide the start screen
+            if (!gameOver && paused && !countdownActive) {
+                countdownActive = true;
+                countdownStartTime = 0;
+                updateButtonStates();
+                requestAnimationFrame(countdownAnimation);
+            }
+            startScreenOverlay.removeEventListener('click', handleStartScreenClick); // Remove listener after first click
+        }
+
+        window.onload = () => {
+            updateButtonStates();
+            updateHUDDisplay();
+            startScreenOverlay.style.display = 'flex'; // Ensure start screen is visible on load
+            startScreenOverlay.addEventListener('click', handleStartScreenClick); // Add click listener to start screen
+            paused = true; 
+        };
 
         function animate(timestamp) {
-            // Initialize lastTimestamp on the very first frame or after a hard reset
             if (lastTimestamp === 0) {
                 lastTimestamp = timestamp;
             }
@@ -901,9 +867,9 @@
 
             const MAX_DELTA_TIME = 100;
             const deltaTime = Math.min(timestamp - lastTimestamp, MAX_DELTA_TIME);
-            lastTimestamp = timestamp; // Update lastTimestamp for the next frame
+            lastTimestamp = timestamp;
 
-            updateCar(deltaTime); // This now handles both keyboard and canvas click/touch inputs
+            updateCar(deltaTime);
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -931,70 +897,6 @@
 
             animationId = requestAnimationFrame(animate);
         }
-
-        // New scroll to start game logic
-        let scrollListenerAdded = false;
-
-        function handleScrollToStart() {
-            if (startScreenOverlay.style.display === 'flex' && window.scrollY > 0) {
-                startScreenOverlay.style.display = 'none';
-                if (!gameOver && paused && !countdownActive) { // Only start if game is initially paused and not over
-                    countdownActive = true;
-                    countdownStartTime = 0;
-                    updateButtonStates();
-                    requestAnimationFrame(countdownAnimation);
-                }
-                window.removeEventListener('scroll', handleScrollToStart); // Remove listener once started
-                scrollListenerAdded = false;
-                window.scrollTo(0,0); // Scroll back to top after dismissing start screen
-            }
-        }
-
-        window.onload = () => {
-            updateButtonStates();
-            updateHUDDisplay();
-            // Initially show the start screen
-            startScreenOverlay.style.display = 'flex';
-            // Add scroll listener for initial start
-            if (!scrollListenerAdded) {
-                window.addEventListener('scroll', handleScrollToStart);
-                scrollListenerAdded = true;
-            }
-            // Ensure the game is paused initially until scroll or play button is used
-            paused = true; 
-        };
-
-        // When restarting the game, if the game over overlay is closed, we need to ensure the start screen logic is re-initialized.
-        closeOverlayBtn.addEventListener('click', () => {
-            nameOverlay.style.display = 'none';
-            resetGame(); // resetGame sets paused = true, and music paused.
-            // When game over is dismissed, if we want to show start screen again:
-            startScreenOverlay.style.display = 'flex';
-            window.scrollTo(0, 0); // Scroll to top to ensure scroll-to-start works again
-            if (!scrollListenerAdded) {
-                window.addEventListener('scroll', handleScrollToStart);
-                scrollListenerAdded = true;
-            }
-            updateButtonStates();
-            if (animationId) cancelAnimationFrame(animationId);
-        });
-
-        // Also, on restart, make sure the scroll listener is re-added if it was removed
-        restartBtn.addEventListener('click', () => {
-            resetGame();
-            paused = true; 
-            backgroundMusic.pause();
-            backgroundMusic.currentTime = 0;
-            if (animationId) cancelAnimationFrame(animationId);
-            startScreenOverlay.style.display = 'flex'; // Show start screen on restart
-            window.scrollTo(0, 0); // Scroll to top for start screen
-            if (!scrollListenerAdded) {
-                window.addEventListener('scroll', handleScrollToStart);
-                scrollListenerAdded = true;
-            }
-            updateButtonStates();
-        });
-
     </script>
 </body>
 </html>
