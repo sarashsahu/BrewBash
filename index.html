@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brew Bash Mobile</title>
+    <title>Brew Bash</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
@@ -81,7 +81,7 @@
         .game-title {
             font-size: 1.2rem; /* Increased font size for prominence */
             font-weight: normal;
-            margin-bottom: -10px; /* Space below title */
+            margin-bottom: -5px; /* Space below title */
             color: #e2e8f0; /* Lighter color for visibility */
             text-align: center;
             width: 100%; /* Ensure it takes full width for centering */
@@ -91,8 +91,8 @@
             width: 100%;
             display: flex;
             flex-direction: column;
-            gap: 5px;
-            margin-bottom: 0px; /* Reduced space between stats and canvas */
+            gap: 8px;
+            margin-bottom: -5px; /* Reduced space between stats and canvas */
             padding: 10px;
             background-color: #2d3748;
             border-radius: 10px;
@@ -112,7 +112,7 @@
             background-color: #6a748c;
             border-radius: 5px;
             height: 10px;
-            width: 100%;
+            width: 60%;
             overflow: hidden;
             margin-top: 3px;
         }
@@ -129,7 +129,7 @@
             justify-content: space-around; /* Distribute space around items */
             gap: 5px; /* Smaller gap between buttons */
             width: 100%;
-            margin-top: 10px; /* Add some space above the button group */
+            margin-top: 0px; /* Add some space above the button group */
         }
         .game-button {
             background-color: #4299e1;
@@ -311,15 +311,15 @@
             <h2 class="game-title">Brew Bash</h2>
             <div class="stats-container">
                 <div class="stats-item">
-                    <span>Score:</span>
+                    <span>Score :</span>
                     <span id="hudScore">0</span>
                 </div>
                 <div class="stats-item">
-                    <span>Speed:</span>
+                    <span>Speed :</span>
                     <span id="hudSpeed">0 km/h</span>
                 </div>
                 <div class="stats-item">
-                    <span>Health:</span>
+                    <span>Health :</span>
                 <div class="progress-bar">
                     <div id="healthBarFill" class="progress-fill" style="width: 100%; background-color: limegreen;"></div>
                 </div>
@@ -329,7 +329,6 @@
                     <button id="pauseBtn" class="game-button" disabled title="Pause"><i class="fas fa-pause"></i></button>
                     <button id="restartBtn" class="game-button" title="Restart"><i class="fas fa-redo"></i></button>
                 </div>
-            </div>
         
             <canvas id="roadCanvas" width="350" height="450"></canvas>
             
@@ -337,6 +336,7 @@
                 <button id="moveLeftBtn" class="mobile-button"><</button>
                 <button id="moveRightBtn" class="mobile-button">></button>
             </div>
+            </div>      
 
             <div class="developed-by-section">
                 <span style="font-weight: normal; font-size: 0.8rem; color: #a0aec0; text-align: center;">Developed By </span>
@@ -380,7 +380,7 @@
         const centerX = canvas.width / 2;
         const carWidth = 50;
         const carHeight = 110;
-        const carY = canvas.height - carHeight - 60;
+        const carY = canvas.height - carHeight - 20; // 20px from the bottom
         
         // Adjusted carBaseX to center the car on the 325px road
         const carBaseX = centerX - roadWidth / 2; 
