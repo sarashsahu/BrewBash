@@ -59,9 +59,9 @@
             background-color: #000;
             display: block;
             border-radius: 10px;
-            max-width: 100%; /* Make canvas responsive */
-            height: 425px; /* Keep fixed height as per original for game area */
-            object-fit: contain; /* Ensure the entire game is visible within the canvas */
+            width: 100%; /* Set width to 100% of its parent container */
+            height: 450px; /* Set a fixed height for the canvas */
+            object-fit: fill; /* This will stretch the content to fill the canvas */
         }
 
         .control-panel {
@@ -329,8 +329,8 @@
                     <button id="pauseBtn" class="game-button" disabled title="Pause"><i class="fas fa-pause"></i></button>
                     <button id="restartBtn" class="game-button" title="Restart"><i class="fas fa-redo"></i></button>
                 </div>
-        
-            <canvas id="roadCanvas" width="350" height="450"></canvas>
+            
+            <canvas id="roadCanvas" height="450"></canvas>
             
             <div class="mobile-controls">
                 <button id="moveLeftBtn" class="mobile-button"><</button>
@@ -374,9 +374,17 @@
         const canvas = document.getElementById('roadCanvas');
         const ctx = canvas.getContext('2d');
 
-        // Changed roadWidth back to 325
-        const roadWidth = 325; 
-        const roadHeight = canvas.height; 
+        // Set canvas dimensions to match its rendered size (from CSS).
+        // This will now get the 450px height from the HTML attribute if set,
+        // or the CSS height if the attribute is not present.
+        canvas.width = canvas.offsetWidth; // This correctly gets width from CSS
+        // canvas.height = canvas.offsetHeight; // This line is now redundant for height if HTML attribute is used,
+                                            // but harmless as it will read the 450px.
+                                            // Leaving it in for consistency with the width.
+
+        // Recalculate roadWidth based on dynamic canvas width
+        const roadWidth = canvas.width * 0.9; 
+        
         const centerX = canvas.width / 2;
         const carWidth = 50;
         const carHeight = 110;
@@ -557,7 +565,7 @@
         moveRightBtn.addEventListener('touchend', (e) => { e.preventDefault(); keys.right = false; });
         moveRightBtn.addEventListener('mousedown', () => { if (!gameOver && !paused && startScreenOverlay.style.display !== 'flex') keys.right = true; });
         moveRightBtn.addEventListener('mouseup', () => { keys.right = false; });
-        moveRightBtn.addEventListener('mouseleave', () => { keys.right = false; }); // Fixed: was keys.left = false;
+        moveRightBtn.addEventListener('mouseleave', () => { keys.right = false; }); 
 
         function showGameOverOverlay() {
             finalScoreSpan.textContent = score;
@@ -599,7 +607,7 @@
         }
 
         function updateLampposts(deltaTime) {
-            if (!gameOver && (lampposts.length === 0 || roadHeight - lastLamppostY > 200)) { 
+            if (!gameOver && (lampposts.length === 0 || canvas.height - lastLamppostY > 200)) { 
                 spawnLamppost();
             }
 
@@ -651,7 +659,7 @@
                     healthDrop25PercentGiven = true;
                 }
 
-                if (l.y > roadHeight + 10) {
+                if (l.y > canvas.height + 10) {
                     lampposts.splice(i, 1);
                     if (!l.checked && !gameOver) {
                         score += 50;
@@ -694,7 +702,7 @@
                 updateHUDDisplay();
             }
 
-            if (healthDrop.y > roadHeight) {
+            if (healthDrop.y > canvas.height) {
                 healthDrop.active = false;
             }
         }
@@ -722,17 +730,17 @@
         function drawRoad() {
             // Draw the road centered horizontally with the new roadWidth
             ctx.fillStyle = '#222';
-            ctx.fillRect(centerX - roadWidth / 2, 0, roadWidth, roadHeight); 
+            ctx.fillRect(centerX - roadWidth / 2, 0, roadWidth, canvas.height); 
 
             ctx.strokeStyle = '#ccc';
             ctx.lineWidth = 4;
             ctx.beginPath();
             // Left border of the road
             ctx.moveTo(centerX - roadWidth / 2, 0); 
-            ctx.lineTo(centerX - roadWidth / 2, roadHeight); 
+            ctx.lineTo(centerX - roadWidth / 2, canvas.height); 
             // Right border of the road
             ctx.moveTo(centerX + roadWidth / 2, 0); 
-            ctx.lineTo(centerX + roadWidth / 2, roadHeight); 
+            ctx.lineTo(centerX + roadWidth / 2, canvas.height); 
             ctx.stroke();
 
             ctx.setLineDash([30, 30]);
@@ -741,7 +749,7 @@
             ctx.lineDashOffset = -dashOffset;
             ctx.beginPath();
             ctx.moveTo(centerX, 0);
-            ctx.lineTo(centerX, roadHeight); 
+            ctx.lineTo(centerX, canvas.height); 
             ctx.stroke();
             ctx.setLineDash([]);
         }
