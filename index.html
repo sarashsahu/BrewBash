@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Brew Bash Mobile</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         /* Import the 'Press Start 2P' font for a video game feel */
-        @import url('https://fonts.googleapis.com/css2?family=Press+Start 2P&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
         
         body {
             /* Apply the video game font to the entire body */
@@ -77,19 +77,22 @@
             flex-grow: 1; /* Allows it to take up available space on larger screens */
         }
 
-        .game-info h2 {
-            font-size: 1rem; /* Adjusted for pixel font readability */
+        /* Adjusted styling for the main game title */
+        .game-title {
+            font-size: 1.2rem; /* Increased font size for prominence */
             font-weight: normal;
-            margin-bottom: 10px;
-            color: #a0aec0;
+            margin-bottom: -10px; /* Space below title */
+            color: #e2e8f0; /* Lighter color for visibility */
             text-align: center;
+            width: 100%; /* Ensure it takes full width for centering */
         }
+
         .stats-container {
             width: 100%;
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            margin-bottom: 5px; /* Reduced space between stats and canvas */
+            gap: 5px;
+            margin-bottom: 0px; /* Reduced space between stats and canvas */
             padding: 10px;
             background-color: #2d3748;
             border-radius: 10px;
@@ -121,24 +124,32 @@
             transition: width 0.2s ease-in-out, background-color 0.2s ease-in-out;
         }
         .button-group {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+            display: flex; /* Changed to flex to make buttons side-by-side */
+            flex-direction: row; /* Ensure row direction for buttons */
+            justify-content: space-around; /* Distribute space around items */
+            gap: 5px; /* Smaller gap between buttons */
             width: 100%;
+            margin-top: 10px; /* Add some space above the button group */
         }
         .game-button {
             background-color: #4299e1;
             color: white;
-            padding: 10px 20px;
+            padding: 8px 10px; /* Smaller padding */
             border-radius: 8px;
-            font-size: 0.85rem; /* Adjusted for pixel font readability */
+            font-size: 0.7rem; /* Smaller font size for icons/text */
             font-weight: normal;
             cursor: pointer;
             transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
             border: none;
-            width: 100%;
+            flex: 1; /* Make buttons take equal space */
+            display: flex; /* Use flex to center icon */
+            justify-content: center;
+            align-items: center;
             touch-action: manipulation;
+        }
+        .game-button i {
+            font-size: 1.2rem; /* Size for icons */
         }
         .game-button:hover:not(:disabled) {
             background-color: #3182ce;
@@ -155,7 +166,7 @@
             justify-content: space-around;
             width: 100%;
             gap: 10px;
-            margin-top: 5px; /* Reduced space between canvas and mobile controls */
+            margin-top: 0px; /* Reduced space between canvas and mobile controls */
         }
         .mobile-button {
             background-color: #4299e1;
@@ -271,11 +282,25 @@
             0% { transform: scale(1); }
             100% { transform: scale(1.05); }
         }
+        /* Added new style for the Developed By section wrapper for better alignment */
+        .developed-by-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center; /* Center items horizontally */
+            margin-top: 5px; /* Space from elements above */
+            width: 100%; /* Ensure it spans the width of its parent to center content */
+        }
+        .developed-by-section .game-button {
+            flex: none; /* Override flex: 1 from original .game-button */
+            width: fit-content; /* Let the button size to its content */
+            padding: 8px 15px; /* Adjust padding as needed */
+            margin-top: 5px; /* Small space between text and button */
+        }
     </style>
 </head>
 <body>
     <div id="startScreenOverlay">
-        <h1>Brew Bash Mobile</h1>
+        <h1>Brew Bash</h1>
         <p>A Game by @sarashsahu</p>
         <p style="margin-top: 50px;">Tap / Click to Start</p>
         <p style="font-size: 0.8rem; color: #718096; position: absolute; bottom: 20px;">Use A/D or Left/Right Arrows to move</p>
@@ -283,6 +308,7 @@
 
     <div class="game-wrapper">
         <div class="main-game-area">
+            <h2 class="game-title">Brew Bash</h2>
             <div class="stats-container">
                 <div class="stats-item">
                     <span>Score:</span>
@@ -292,15 +318,16 @@
                     <span>Speed:</span>
                     <span id="hudSpeed">0 km/h</span>
                 </div>
-                <div class="progress-bar">
-                    <div id="speedBarFill" class="progress-fill" style="width: 0%; background-color: lightgreen;"></div>
-                </div>
                 <div class="stats-item">
                     <span>Health:</span>
-                    <span id="hudHealthValue">100%</span>
-                </div>
                 <div class="progress-bar">
                     <div id="healthBarFill" class="progress-fill" style="width: 100%; background-color: limegreen;"></div>
+                </div>
+                </div>
+                <div class="button-group">
+                    <button id="playBtn" class="game-button" title="Play"><i class="fas fa-play"></i></button>
+                    <button id="pauseBtn" class="game-button" disabled title="Pause"><i class="fas fa-pause"></i></button>
+                    <button id="restartBtn" class="game-button" title="Restart"><i class="fas fa-redo"></i></button>
                 </div>
             </div>
         
@@ -310,19 +337,13 @@
                 <button id="moveLeftBtn" class="mobile-button"><</button>
                 <button id="moveRightBtn" class="mobile-button">></button>
             </div>
-        </div>       
-        <div class="control-panel">
-            <div class="game-info">
-                <h2>Brew Bash Mobile</h2>
-                <div class="button-group">
-                    <button id="playBtn" class="game-button">Play</button>
-                    <button id="pauseBtn" class="game-button" disabled>Pause</button>
-                    <button id="restartBtn" class="game-button">Restart</button>
-                    <span style="font-weight: normal; font-size: 0.8rem; color: #a0aec0; text-align: center; margin-top: 10px;">Developed By </span>
-                    <a href="https://www.instagram.com/sarashsahu" target="_blank" class="game-button" style="text-align: center;">@sarashsahu</a>
-                </div>
+
+            <div class="developed-by-section">
+                <span style="font-weight: normal; font-size: 0.8rem; color: #a0aec0; text-align: center;">Developed By </span>
+                <a href="https://www.instagram.com/sarashsahu" target="_blank" class="game-button">@sarashsahu</a>
             </div>
-        </div>
+
+        </div>       
     </div>
 
     <div id="nameInputOverlay" class="overlay">
@@ -333,7 +354,7 @@
             <span style="font-weight: normal; font-size: 0.7rem; color: #a0aec0; text-align: center; margin-top: 10px;">Any Feedback? DM! </span>
             <br>
             <br>
-            <a href="https://www.instagram.com/sarashsahu" target="_blank" class="game-button" style="text-align: center;">@sarashsahu</a>
+            <a href="https://www.instagram.com/sarashsahu" target="_blank" class="game-button" style="text-align: center; flex: none; width: fit-content; margin: 0 auto;">@sarashsahu</a>
             <br>
             <br>
             <button id="closeOverlayBtn">Try Again!</button>
@@ -405,8 +426,8 @@
 
         const hudScore = document.getElementById('hudScore');
         const hudSpeed = document.getElementById('hudSpeed');
-        const speedBarFill = document.getElementById('speedBarFill');
-        const hudHealthValue = document.getElementById('hudHealthValue');
+        const speedBarFill = document.getElementById('speedBarFill'); // This ID is not present in HTML, consider adding it for speed bar visual.
+        const hudHealthValue = document.getElementById('hudHealthValue'); // This ID is not present in HTML, consider adding it to display health value.
         const healthBarFill = document.getElementById('healthBarFill');
 
         const moveLeftBtn = document.getElementById('moveLeftBtn');
@@ -474,8 +495,8 @@
         collectSound.addEventListener('ended', unduckBackgroundMusic);
 
         playBtn.addEventListener('click', () => {
-            if (gameOver || countdownActive || startScreenOverlay.style.display === 'flex') return;
-            if (paused) {
+            // Only allow play if not game over and currently paused (and not already in countdown)
+            if (!gameOver && paused && !countdownActive) {
                 countdownActive = true;
                 countdownStartTime = 0;
                 updateButtonStates();
@@ -498,7 +519,7 @@
             backgroundMusic.pause();
             backgroundMusic.currentTime = 0;
             if (animationId) cancelAnimationFrame(animationId);
-            startScreenOverlay.style.display = 'flex';
+            startScreenOverlay.style.display = 'flex'; // Show start screen on restart
             updateButtonStates();
         });
 
@@ -521,7 +542,7 @@
             paused = true;
             backgroundMusic.pause();
             backgroundMusic.currentTime = 0;
-            startScreenOverlay.style.display = 'flex';
+            startScreenOverlay.style.display = 'flex'; // Show start screen after game over and "Try Again"
             updateButtonStates();
             if (animationId) cancelAnimationFrame(animationId);
         });
@@ -536,7 +557,7 @@
         moveRightBtn.addEventListener('touchend', (e) => { e.preventDefault(); keys.right = false; });
         moveRightBtn.addEventListener('mousedown', () => { if (!gameOver && !paused && startScreenOverlay.style.display !== 'flex') keys.right = true; });
         moveRightBtn.addEventListener('mouseup', () => { keys.right = false; });
-        moveRightBtn.addEventListener('mouseleave', () => { keys.left = false; });
+        moveRightBtn.addEventListener('mouseleave', () => { keys.right = false; }); // Fixed: was keys.left = false;
 
         function showGameOverOverlay() {
             finalScoreSpan.textContent = score;
@@ -546,11 +567,16 @@
         }
 
         function updateButtonStates() {
-            playBtn.disabled = !paused || gameOver || countdownActive || startScreenOverlay.style.display === 'flex';
+            // Play button is enabled if paused, not game over, and not in countdown
+            playBtn.disabled = !paused || gameOver || countdownActive;
+            // Pause button is enabled if not paused, not game over, and not in countdown
             pauseBtn.disabled = paused || gameOver || countdownActive;
+            // Restart button is always enabled (to allow going back to start screen or restarting)
             restartBtn.disabled = false;
-            moveLeftBtn.disabled = paused || gameOver || countdownActive || startScreenOverlay.style.display === 'flex'; 
-            moveRightBtn.disabled = paused || gameOver || countdownActive || startScreenOverlay.style.display === 'flex';
+
+            // Mobile controls are disabled if paused, game over, or in countdown
+            moveLeftBtn.disabled = paused || gameOver || countdownActive; 
+            moveRightBtn.disabled = paused || gameOver || countdownActive;
         }
 
         function spawnLamppost() {
@@ -617,7 +643,7 @@
                     }
                 }
 
-                if (health === 25 && !healthDrop25PercentGiven && (!healthDrop || !healthDrop.active)) {
+                if (health <= 25 && !healthDrop25PercentGiven && (!healthDrop || !healthDrop.active)) { // Condition changed to <= 25
                     // Calculate dropX based on the centered road
                     const roadLeftEdge = centerX - roadWidth / 2;
                     const dropX = roadLeftEdge + Math.random() * (roadWidth - 40) + 20; 
@@ -652,12 +678,13 @@
             }
 
             const carX = carBaseX + carOffsetX;
+            // Simplified collision detection for health drop
             if (
                 healthDrop.active &&
-                healthDrop.y >= carY &&
-                healthDrop.y <= carY + carHeight &&
-                healthDrop.x >= carX &&
-                healthDrop.x <= carX + carWidth
+                healthDrop.y + 10 >= carY && // Check if bottom of health drop touches car top
+                healthDrop.y - 10 <= carY + carHeight && // Check if top of health drop touches car bottom
+                healthDrop.x + 10 >= carX && // Check if right of health drop touches car left
+                healthDrop.x - 10 <= carX + carWidth // Check if left of health drop touches car right
             ) {
                 const dropAmount = 25;
                 health = Math.min(health + dropAmount, 100);
@@ -756,16 +783,29 @@
             const actualSpeed = Math.round(gameSpeedMultiplier * kmPerHourBase);
             hudSpeed.textContent = `${actualSpeed} km/h`;
 
-            const maxBarSpeed = getSpeedForScore(20000) * kmPerHourBase;
-            const speedPercentage = Math.min(100, (actualSpeed / maxBarSpeed) * 100);
-            speedBarFill.style.width = `${speedPercentage}%`;
-            let speedBarColor = 'lightgreen';
-            if (actualSpeed >= kmPerHourBase * 3.0) speedBarColor = 'red';
-            else if (actualSpeed >= kmPerHourBase * 2.0) speedBarColor = 'orange';
-            else if (actualSpeed >= kmPerHourBase * 1.5) speedBarColor = 'yellow';
-            speedBarFill.style.backgroundColor = speedBarColor;
+            // There is no element with id `speedBarFill` in the provided HTML.
+            // If you want a speed bar, you need to add it to the HTML structure.
+            // Example: <div class="progress-bar"><div id="speedBarFill" class="progress-fill"></div></div>
+            // For now, this part will not function visually without the element.
+            if (speedBarFill) { // Check if the element exists before trying to access its style
+                const maxBarSpeed = getSpeedForScore(20000) * kmPerHourBase;
+                const speedPercentage = Math.min(100, (actualSpeed / maxBarSpeed) * 100);
+                speedBarFill.style.width = `${speedPercentage}%`;
+                let speedBarColor = 'lightgreen';
+                if (actualSpeed >= kmPerHourBase * 3.0) speedBarColor = 'red';
+                else if (actualSpeed >= kmPerHourBase * 2.0) speedBarColor = 'orange';
+                else if (actualSpeed >= kmPerHourBase * 1.5) speedBarColor = 'yellow';
+                speedBarFill.style.backgroundColor = speedBarColor;
+            }
 
-            hudHealthValue.textContent = `${health}%`;
+
+            // There is no element with id `hudHealthValue` in the provided HTML.
+            // If you want to display the health percentage as text, you need to add it.
+            // Example: <div class="stats-item"><span>Health:</span><span id="hudHealthValue">100%</span></div>
+            if (hudHealthValue) { // Check if the element exists
+                hudHealthValue.textContent = `${health}%`;
+            }
+            
             const healthPercentage = (health / 100) * 100;
             healthBarFill.style.width = `${healthPercentage}%`;
             let healthBarColor = 'limegreen';
@@ -833,6 +873,8 @@
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawRoad();
+            updateLampposts(0); // Update lampposts positions, but without collision or scoring during countdown
+            updateHealthDrop(0); // Update health drop position, but without collision during countdown
             drawCar();
             updateHUDDisplay();
 
@@ -871,7 +913,7 @@
             updateHUDDisplay();
             startScreenOverlay.style.display = 'flex';
             startScreenOverlay.addEventListener('click', handleStartScreenClick); 
-            paused = true; 
+            paused = true; // Ensure game is paused on load
         };
 
         function animate(timestamp) {
