@@ -462,3 +462,10 @@ canvas {
     0% { transform: scale(1); }
     100% { transform: scale(1.05); }
 }
+
+.final-stats {
+    font-size: 0.62rem !important;
+    color: #93c5fd !important;
+    margin: 4px 0 6px !important;
+    line-height: 1.45;
+}

@@ -44,6 +44,7 @@ try {
 let combo = 1;
 let health = 100;
 let hasShield = false;
+let nitroTimer = 0;
 let slipTimer = 0;
 let slipDir = 1;
 let shakeTimer = 0;
@@ -51,6 +52,23 @@ let flashColor = '#ef4444';
 let flashAlpha = 0;
 let gameOver = false;
 let lampposts = [];
+let trafficCars = [];
+let trafficCooldown = 5000;
+let skids = [];
+let skidCooldown = 0;
+let particles = [];
+let floatingTexts = [];
+const windStreaks = Array.from({ length: 10 }, (_, idx) => ({
+    side: idx % 2 === 0 ? 0 : 1,
+    xRatio: 0.04 + (idx % 5) * 0.025,
+    y: (idx / 10) * 600,
+    len: 28 + (idx % 3) * 18,
+    speed: 1.4 + (idx % 4) * 0.25
+}));
+let distanceMeters = 0;
+let maxKmhReached = 100;
+let nearMissCount = 0;
+let nightAlpha = 0;
 let autoSpeed = 1.0;
 let targetAutoSpeed = 1.0;
 let speedShiftTimer = 2500;
@@ -81,6 +99,7 @@ let muted = false;
 const nameOverlay = document.getElementById('nameInputOverlay');
 const finalScoreSpan = document.getElementById('finalScore');
 const finalBestSpan = document.getElementById('finalBest');
+const finalStatsSpan = document.getElementById('finalStats');
 const newRecordBadge = document.getElementById('newRecordBadge');
 const closeOverlayBtn = document.getElementById('closeOverlayBtn');
 const playBtn = document.getElementById('playBtn');
@@ -111,6 +130,8 @@ let lemonSprite = null;
 let coneSprite = null;
 let oilSprite = null;
 let shieldSprite = null;
+let nitroSprite = null;
+let trafficSprites = [null, null];
 let roadTiles = [null, null, null];
 let signCache = { meters: -1, label: '', newStart: -1, w: 0, canvas: null };
 let pillCache = { meters: -1, label: '', w: 0, canvas: null };
@@ -133,6 +154,67 @@ function bakeAspectSprite(img, targetW, fallbackRatio) {
     return bakeSprite(img, targetW, Math.max(1, Math.round(targetW * ratio)));
 }
 
+function bakeExtraSprites() {
+    if (carWidth <= 0 || heartSize <= 0) return;
+    // Nitro boost lightning emblem sprite
+    const ns = Math.max(20, Math.round(heartSize * 1.15));
+    const nc = document.createElement('canvas');
+    nc.width = ns;
+    nc.height = ns;
+    const nctx = nc.getContext('2d');
+    nctx.fillStyle = '#f97316';
+    nctx.strokeStyle = '#fef08a';
+    nctx.lineWidth = 2;
+    nctx.beginPath();
+    nctx.arc(ns / 2, ns / 2, ns * 0.44, 0, Math.PI * 2);
+    nctx.fill();
+    nctx.stroke();
+    nctx.fillStyle = '#fef08a';
+    nctx.beginPath();
+    nctx.moveTo(ns * 0.56, ns * 0.16);
+    nctx.lineTo(ns * 0.3, ns * 0.54);
+    nctx.lineTo(ns * 0.5, ns * 0.54);
+    nctx.lineTo(ns * 0.42, ns * 0.84);
+    nctx.lineTo(ns * 0.7, ns * 0.46);
+    nctx.lineTo(ns * 0.5, ns * 0.46);
+    nctx.closePath();
+    nctx.fill();
+    nitroSprite = nc;
+
+    // Two baked top-down AI traffic sedans
+    const tw = Math.max(20, Math.round(carWidth * 0.92));
+    const th = Math.max(40, Math.round(carHeight * 0.9));
+    const palettes = [
+        { body: '#2563eb', roof: '#1d4ed8', glass: '#bfdbfe' },
+        { body: '#eab308', roof: '#ca8a04', glass: '#fef08a' }
+    ];
+    trafficSprites = palettes.map(pal => {
+        const tc = document.createElement('canvas');
+        tc.width = tw;
+        tc.height = th;
+        const tctx = tc.getContext('2d');
+        tctx.fillStyle = pal.body;
+        if (tctx.roundRect) {
+            tctx.beginPath();
+            tctx.roundRect(1, 2, tw - 2, th - 4, Math.max(4, tw * 0.24));
+            tctx.fill();
+        } else {
+            tctx.fillRect(1, 2, tw - 2, th - 4);
+        }
+        tctx.fillStyle = '#0f172a';
+        tctx.fillRect(tw * 0.16, th * 0.2, tw * 0.68, th * 0.22);
+        tctx.fillRect(tw * 0.18, th * 0.64, tw * 0.64, th * 0.16);
+        tctx.fillStyle = pal.roof;
+        tctx.fillRect(tw * 0.18, th * 0.4, tw * 0.64, th * 0.26);
+        tctx.fillStyle = pal.glass;
+        tctx.fillRect(tw * 0.22, th * 0.22, tw * 0.56, 3);
+        tctx.fillStyle = '#ef4444';
+        tctx.fillRect(tw * 0.14, th - 6, tw * 0.22, 4);
+        tctx.fillRect(tw * 0.64, th - 6, tw * 0.22, 4);
+        return tc;
+    });
+}
+
 function bakeAllSprites() {
     if (beerImage.complete && beerImage.naturalWidth > 0 && brewWidth > 0) {
         brewHeight = Math.round(brewWidth * (beerImage.naturalHeight / beerImage.naturalWidth));
@@ -144,6 +226,7 @@ function bakeAllSprites() {
     coneSprite = bakeAspectSprite(coneImage, Math.max(18, Math.round(brewWidth * 1.35)), 220 / 184);
     oilSprite = bakeAspectSprite(oilImage, Math.max(26, Math.round(carWidth * 1.05)), 233 / 240);
     shieldSprite = bakeAspectSprite(shieldImage, Math.max(20, Math.round(heartSize * 1.1)), 220 / 190);
+    bakeExtraSprites();
 }
 
 function loadSprite(src, onLoad) {
@@ -172,6 +255,9 @@ const shieldImage = loadSprite('assets/images/shield.png', loaded => { shieldIma
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
 let audioUnlocked = false;
+let engineOsc = null;
+let engineGain = null;
+let engineFilter = null;
 const canFetchAudio = location.protocol !== 'file:';
 
 function loadSound(src) {
@@ -256,12 +342,48 @@ function playTone(freqStart, freqEnd, duration = 0.12, type = 'triangle', gainVa
     } catch (_) {}
 }
 
+function haptic(pattern) {
+    if (!muted && navigator.vibrate) {
+        try { navigator.vibrate(pattern); } catch (_) {}
+    }
+}
+
+function updateEngineHum(active) {
+    if (muted || !active || !audioCtx) {
+        if (engineGain && audioCtx) {
+            engineGain.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.05);
+        }
+        return;
+    }
+    try {
+        if (!engineOsc) {
+            engineOsc = audioCtx.createOscillator();
+            engineFilter = audioCtx.createBiquadFilter();
+            engineGain = audioCtx.createGain();
+            engineOsc.type = 'sawtooth';
+            engineFilter.type = 'lowpass';
+            engineFilter.frequency.value = 260;
+            engineGain.gain.value = 0.0001;
+            engineOsc.connect(engineFilter);
+            engineFilter.connect(engineGain);
+            engineGain.connect(audioCtx.destination);
+            engineOsc.start();
+        }
+        const spd = gameSpeedMultiplier + (nitroTimer > 0 ? 0.65 : 0);
+        const freq = 48 + Math.min(4.6, spd) * 26;
+        engineOsc.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.08);
+        engineFilter.frequency.setTargetAtTime(220 + spd * 65, audioCtx.currentTime, 0.08);
+        engineGain.gain.setTargetAtTime(nitroTimer > 0 ? 0.028 : 0.018, audioCtx.currentTime, 0.06);
+    } catch (_) {}
+}
+
 function toggleMute() {
     muted = !muted;
     muteBtn.blur();
     muteBtn.innerHTML = muted ? '<i class="fas fa-volume-mute"></i>' : '<i class="fas fa-volume-up"></i>';
     if (muted) {
         for (const sound of [crashSound, gameOverSound, collectSound]) stopSound(sound);
+        updateEngineHum(false);
     }
 }
 
@@ -366,6 +488,7 @@ function startCountdown() {
 function returnToStartScreen() {
     if (animationId) cancelAnimationFrame(animationId);
     animationId = null;
+    updateEngineHum(false);
     resetGame();
     paused = true;
     startScreenOverlay.style.display = 'flex';
@@ -382,6 +505,7 @@ function togglePause() {
     } else {
         paused = true;
         clearKeys();
+        updateEngineHum(false);
         if (animationId) cancelAnimationFrame(animationId);
         animationId = null;
         updateButtonStates();
@@ -497,11 +621,45 @@ function syncHighScore(persist = false) {
     return isNew;
 }
 
+function spawnSparks(x, y, color, count = 10) {
+    for (let i = 0; i < count; i++) {
+        if (particles.length >= 28) particles.shift();
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 70 + Math.random() * 190;
+        particles.push({
+            x,
+            y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            size: 2.5 + Math.random() * 2.5,
+            color,
+            alpha: 1
+        });
+    }
+}
+
+function addFloatText(x, y, text, color = '#facc15') {
+    if (floatingTexts.length >= 6) floatingTexts.shift();
+    floatingTexts.push({ x, y, text, color, alpha: 1 });
+}
+
+function addSkidPair(alpha = 0.36) {
+    const cx = carBaseX + carOffsetX + carWidth / 2;
+    const ry = carY + carHeight * 0.86;
+    const halfTrack = carWidth * 0.34;
+    for (const side of [-1, 1]) {
+        if (skids.length >= 24) skids.shift();
+        skids.push({ x: cx + side * halfTrack, y: ry, alpha });
+    }
+}
+
 function showGameOverOverlay() {
     clearKeys();
+    updateEngineHum(false);
     const isNew = syncHighScore(true);
     finalScoreSpan.textContent = score;
     finalBestSpan.textContent = highScore;
+    finalStatsSpan.textContent = `Dist: ${(distanceMeters / 1000).toFixed(2)} km • Top: ${Math.round(maxKmhReached)} km/h • Close: ${nearMissCount}`;
     newRecordBadge.textContent = isNew && score > 0 ? 'NEW BEST!' : '';
     nameOverlay.style.display = 'flex';
     updateButtonStates();
@@ -516,13 +674,18 @@ function updateButtonStates() {
 }
 
 function triggerCrash(damage = 25) {
+    const cx = carBaseX + carOffsetX + carWidth / 2;
+    const cy = carY + carHeight * 0.35;
     if (hasShield) {
         hasShield = false;
         carBlinkRemaining = CAR_BLINK_DURATION;
         shakeTimer = 110;
         triggerFlash('#38bdf8', 0.3);
+        spawnSparks(cx, cy, '#38bdf8', 12);
+        addFloatText(cx, carY - 8, 'SHIELD SAVED!', '#38bdf8');
         showBanner('SHIELD SAVED!', '#38bdf8', 1300);
         playTone(620, 920, 0.14);
+        haptic(25);
         updateHUDDisplay();
         return false;
     }
@@ -530,10 +693,14 @@ function triggerCrash(damage = 25) {
     combo = 1;
     shakeTimer = 140;
     triggerFlash('#ef4444', 0.36);
+    spawnSparks(cx, cy, '#f97316', 12);
+    addSkidPair(0.5);
+    haptic([45, 25, 45]);
     health = Math.max(0, health - damage);
     if (health <= 0) {
         gameOver = true;
         paused = true;
+        updateEngineHum(false);
         stopSound(crashSound);
         playSound(gameOverSound);
         if (animationId) cancelAnimationFrame(animationId);
@@ -745,7 +912,7 @@ function updateSpeedTrap(deltaTime) {
     }
 }
 
-function updateLampposts(deltaTime) {
+function updateLampposts(deltaTime, effSpeed) {
     if (!gameOver && lampposts.length < 10) {
         if (lampposts.length === 0) {
             spawnBrewWave(-brewHeight);
@@ -762,7 +929,7 @@ function updateLampposts(deltaTime) {
     }
 
     const carX = carBaseX + carOffsetX;
-    const baseStep = (gameSpeedMultiplier * baseObstacleSpeed / 1000) * deltaTime;
+    const baseStep = (effSpeed * baseObstacleSpeed / 1000) * deltaTime;
 
     for (let i = lampposts.length - 1; i >= 0; i--) {
         const l = lampposts[i];
@@ -777,13 +944,25 @@ function updateLampposts(deltaTime) {
 
         if (!l.checked) {
             if (l.type === 'oil') {
-                if (rectCircleColliding(l.x, l.y, brewRadius * 1.15, carX, carY, carWidth, carHeight)) {
+                if (nitroTimer <= 0 && rectCircleColliding(l.x, l.y, brewRadius * 1.15, carX, carY, carWidth, carHeight)) {
                     l.checked = true;
                     slipTimer = 950;
                     slipDir = Math.random() < 0.5 ? -1 : 1;
+                    addSkidPair(0.5);
                     showBanner('OIL SLIP!', '#a78bfa', 1000);
                     playTone(210, 130, 0.14, 'sine', 0.12);
+                    haptic(25);
                 }
+            } else if (nitroTimer > 0 && rectCircleColliding(l.x, l.y, brewRadius + 4, carX, carY, carWidth, carHeight)) {
+                l.checked = true;
+                const pts = 100 * combo;
+                score += pts;
+                syncHighScore();
+                spawnSparks(l.x, l.y, '#f97316', 10);
+                addFloatText(l.x, l.y - 10, `+${pts} SMASH!`, '#fb923c');
+                playTone(580, 960, 0.1);
+                haptic(15);
+                updateHUDDisplay();
             } else if (carBlinkRemaining <= 0 && rectCircleColliding(l.x, l.y, brewRadius, carX, carY, carWidth, carHeight)) {
                 l.checked = true;
                 if (triggerCrash(25)) return;
@@ -796,12 +975,15 @@ function updateLampposts(deltaTime) {
             lampposts.splice(i, 1);
             if (!l.checked && !gameOver && l.type !== 'oil') {
                 if (l.nearMiss) {
+                    nearMissCount++;
                     combo = Math.min(4, combo + 1);
                     const pts = 50 * combo;
                     score += pts;
                     syncHighScore();
+                    addFloatText(carBaseX + carOffsetX + carWidth / 2, carY - 12, `CLOSE x${combo}`, '#facc15');
                     showBanner(`+${pts} CLOSE CALL x${combo}`, '#facc15', 1100);
                     playTone(540 + combo * 60, 820 + combo * 60, 0.09);
+                    haptic(15);
                 } else {
                     score += 50 * combo;
                     syncHighScore();
@@ -812,15 +994,18 @@ function updateLampposts(deltaTime) {
     }
 }
 
-function updateHealthDrop(deltaTime) {
+function updateHealthDrop(deltaTime, effSpeed) {
     if (!gameOver && (!healthDrop || !healthDrop.active)) {
         heartCooldown -= deltaTime;
         if (heartCooldown <= 0) {
             const needHeart = health < 100;
             const needShield = !hasShield;
+            const needNitro = nitroTimer <= 0;
             let kind = 'lemon';
-            if (needHeart && Math.random() < 0.48) kind = 'heart';
-            else if (needShield && Math.random() < 0.45) kind = 'shield';
+            const r = Math.random();
+            if (needHeart && r < 0.36) kind = 'heart';
+            else if (needShield && r < 0.62) kind = 'shield';
+            else if (needNitro && r < 0.8) kind = 'nitro';
             const zoneStart = (diversion && -heartSize <= diversion.y) ? diversion.newStart : activeStart;
             healthDrop = {
                 kind,
@@ -837,7 +1022,7 @@ function updateHealthDrop(deltaTime) {
 
     if (!healthDrop || !healthDrop.active) return;
 
-    const step = (gameSpeedMultiplier * baseObstacleSpeed / 1000) * deltaTime * healthDrop.speedFactor;
+    const step = (effSpeed * baseObstacleSpeed / 1000) * deltaTime * healthDrop.speedFactor;
     healthDrop.y += step;
     healthDrop.swayPhase += deltaTime * 0.004;
     const zoneStart = (diversion && healthDrop.y <= diversion.y) ? diversion.newStart : activeStart;
@@ -851,26 +1036,205 @@ function updateHealthDrop(deltaTime) {
         healthDrop.x + halfHeart >= carX &&
         healthDrop.x - halfHeart <= carX + carWidth
     ) {
+        const px = healthDrop.x;
+        const py = healthDrop.y;
         if (healthDrop.kind === 'shield') {
             hasShield = true;
+            spawnSparks(px, py, '#38bdf8', 10);
+            addFloatText(px, py - 8, 'SHIELD!', '#38bdf8');
             showBanner('SHIELD READY!', '#38bdf8', 1300);
             playTone(520, 880, 0.14);
+        } else if (healthDrop.kind === 'nitro') {
+            nitroTimer = 5000;
+            slipTimer = 0;
+            spawnSparks(px, py, '#fb923c', 14);
+            addFloatText(px, py - 8, 'NITRO 5s!', '#fb923c');
+            showBanner('NITRO BOOST!', '#f97316', 1400);
+            triggerFlash('#f97316', 0.22);
+            playTone(440, 1320, 0.2, 'sawtooth', 0.11);
         } else if (healthDrop.kind === 'lemon') {
             slipTimer = 0;
             health = Math.min(health + 10, 100);
             const pts = 100 * combo;
             score += pts;
             syncHighScore();
+            spawnSparks(px, py, '#facc15', 10);
+            addFloatText(px, py - 8, `+${pts} LEMON!`, '#facc15');
             showBanner(`+${pts} LEMON FRESH!`, '#facc15', 1300);
             playTone(720, 1180, 0.14);
         } else {
             health = Math.min(health + 25, 100);
+            spawnSparks(px, py, '#e2e8f0', 10);
+            addFloatText(px, py - 8, '+25 HP', '#4ade80');
             playSound(collectSound);
         }
+        haptic(14);
         healthDrop.active = false;
         updateHUDDisplay();
     } else if (healthDrop.y > canvas.height + heartSize) {
         healthDrop.active = false;
+    }
+}
+
+function updateTraffic(deltaTime, effSpeed) {
+    if (!gameOver && trafficCars.length < 2) {
+        trafficCooldown -= deltaTime;
+        if (trafficCooldown <= 0) {
+            const zoneStart = (diversion && -carHeight <= diversion.y) ? diversion.newStart : activeStart;
+            const tw = trafficSprites[0] ? trafficSprites[0].width : carWidth * 0.92;
+            const th = trafficSprites[0] ? trafficSprites[0].height : carHeight * 0.9;
+            // Pick one lane in the 2-lane zone; skip if another traffic car is close so both lanes aren't walled
+            const laneChoice = zoneStart + (Math.random() < 0.5 ? 0 : 1);
+            const spawnY = -th - 12;
+            const blocked = trafficCars.some(t => Math.abs(t.y - spawnY) < th * 2.3) ||
+                (diversion && Math.abs(spawnY - diversion.y) < diversion.taperH + th);
+            if (!blocked) {
+                const tx = carBaseX + (laneChoice + 0.5) * laneWidth - tw / 2;
+                const willSwitch = Math.random() < 0.45;
+                trafficCars.push({
+                    x: tx,
+                    y: spawnY,
+                    w: tw,
+                    h: th,
+                    variant: Math.random() < 0.5 ? 0 : 1,
+                    lane: laneChoice,
+                    targetLane: laneChoice,
+                    blinkTimer: willSwitch ? 700 + Math.random() * 600 : 0,
+                    switchTriggerY: canvas.height * (0.12 + Math.random() * 0.22),
+                    switching: false,
+                    speedFactor: 0.44 + Math.random() * 0.14,
+                    checked: false,
+                    nearMiss: false
+                });
+            }
+            trafficCooldown = 4200 + Math.random() * 4800;
+        }
+    }
+
+    const carX = carBaseX + carOffsetX;
+    const baseStep = (effSpeed * baseObstacleSpeed / 1000) * deltaTime;
+    const dt = deltaTime / 1000;
+
+    for (let i = trafficCars.length - 1; i >= 0; i--) {
+        const t = trafficCars[i];
+        t.y += baseStep * t.speedFactor;
+
+        const zoneStart = (diversion && t.y <= diversion.y) ? diversion.newStart : activeStart;
+        if (t.blinkTimer > 0 && !t.switching && t.y >= t.switchTriggerY) {
+            if (t.targetLane === t.lane) {
+                t.targetLane = t.lane === zoneStart ? zoneStart + 1 : zoneStart;
+            }
+            t.blinkTimer -= deltaTime;
+            if (t.blinkTimer <= 0) t.switching = true;
+        }
+
+        const desiredLane = Math.max(zoneStart, Math.min(zoneStart + 1, t.switching ? t.targetLane : t.lane));
+        const desiredX = carBaseX + (desiredLane + 0.5) * laneWidth - t.w / 2;
+        t.x += (desiredX - t.x) * Math.min(1, dt * 6);
+        if (t.switching && Math.abs(desiredX - t.x) < 2) {
+            t.lane = desiredLane;
+            t.switching = false;
+        }
+
+        if (!t.checked) {
+            const hit =
+                t.x < carX + carWidth - 4 &&
+                t.x + t.w > carX + 4 &&
+                t.y < carY + carHeight - 4 &&
+                t.y + t.h > carY + 4;
+            if (hit) {
+                t.checked = true;
+                if (nitroTimer > 0) {
+                    const pts = 150 * combo;
+                    score += pts;
+                    syncHighScore();
+                    spawnSparks(t.x + t.w / 2, t.y + t.h / 2, '#fb923c', 14);
+                    addFloatText(t.x + t.w / 2, t.y, `+${pts} SMASH!`, '#fb923c');
+                    playTone(540, 960, 0.12);
+                    haptic(18);
+                    trafficCars.splice(i, 1);
+                    updateHUDDisplay();
+                    continue;
+                } else if (carBlinkRemaining <= 0) {
+                    if (triggerCrash(30)) return;
+                }
+            } else if (!t.nearMiss &&
+                t.x - 14 < carX + carWidth &&
+                t.x + t.w + 14 > carX &&
+                t.y - 12 < carY + carHeight &&
+                t.y + t.h + 12 > carY) {
+                t.nearMiss = true;
+            }
+        }
+
+        if (t.y > canvas.height + t.h) {
+            trafficCars.splice(i, 1);
+            if (!t.checked && !gameOver) {
+                if (t.nearMiss) {
+                    nearMissCount++;
+                    combo = Math.min(4, combo + 1);
+                    const pts = 75 * combo;
+                    score += pts;
+                    syncHighScore();
+                    addFloatText(carX + carWidth / 2, carY - 12, `+${pts} PASS x${combo}`, '#38bdf8');
+                    showBanner(`+${pts} TRAFFIC PASS x${combo}`, '#38bdf8', 1100);
+                    playTone(580 + combo * 50, 860 + combo * 50, 0.09);
+                    haptic(15);
+                } else {
+                    score += 40 * combo;
+                    syncHighScore();
+                }
+                updateHUDDisplay();
+            }
+        }
+    }
+}
+
+function updateFX(deltaTime, effSpeed) {
+    const dt = deltaTime / 1000;
+    const roadStep = (effSpeed * baseObstacleSpeed / 1000) * deltaTime;
+    distanceMeters += (effSpeed * 100 / 3.6) * dt;
+    const curKmh = effSpeed * 100;
+    if (curKmh > maxKmhReached) maxKmhReached = curKmh;
+
+    // Smooth day -> night cycle (~1800 score period)
+    const targetNight = Math.max(0, Math.sin((score / 1800) * Math.PI - Math.PI * 0.25)) * 0.44;
+    nightAlpha += (targetNight - nightAlpha) * Math.min(1, dt * 1.5);
+
+    if (skidCooldown > 0) skidCooldown -= deltaTime;
+    if ((Math.abs(carAngle) > 0.05 || slipTimer > 0) && skidCooldown <= 0) {
+        addSkidPair(slipTimer > 0 ? 0.42 : 0.22);
+        skidCooldown = 55;
+    }
+
+    for (let i = skids.length - 1; i >= 0; i--) {
+        skids[i].y += roadStep;
+        skids[i].alpha -= dt * 1.1;
+        if (skids[i].alpha <= 0.02 || skids[i].y > canvas.height + 20) skids.splice(i, 1);
+    }
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx * dt;
+        p.y += p.vy * dt + roadStep * 0.25;
+        p.alpha -= dt * 2.4;
+        if (p.alpha <= 0.02) particles.splice(i, 1);
+    }
+
+    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        const ft = floatingTexts[i];
+        ft.y -= 42 * dt;
+        ft.alpha -= dt * 1.25;
+        if (ft.alpha <= 0.02) floatingTexts.splice(i, 1);
+    }
+
+    if (effSpeed >= 2.55) {
+        for (const ws of windStreaks) {
+            ws.y += roadStep * ws.speed;
+            if (ws.y > canvas.height + ws.len) {
+                ws.y = -ws.len - Math.random() * 60;
+            }
+        }
     }
 }
 
@@ -1216,6 +1580,8 @@ function drawHealthDrop() {
     if (!healthDrop || !healthDrop.active) return;
     if (healthDrop.kind === 'shield' && shieldSprite) {
         ctx.drawImage(shieldSprite, healthDrop.x - shieldSprite.width / 2, healthDrop.y - shieldSprite.height / 2);
+    } else if (healthDrop.kind === 'nitro' && nitroSprite) {
+        ctx.drawImage(nitroSprite, healthDrop.x - nitroSprite.width / 2, healthDrop.y - nitroSprite.height / 2);
     } else if (healthDrop.kind === 'lemon' && lemonSprite) {
         ctx.drawImage(lemonSprite, healthDrop.x - lemonSprite.width / 2, healthDrop.y - lemonSprite.height / 2);
     } else if (healthDrop.kind === 'lemon' && lemonImageLoaded) {
@@ -1225,10 +1591,50 @@ function drawHealthDrop() {
     } else if (healthDrop.kind === 'heart' && spannerImageLoaded) {
         ctx.drawImage(spannerImage, healthDrop.x - heartSize / 2, healthDrop.y - heartSize / 2, heartSize, heartSize);
     } else {
-        ctx.fillStyle = healthDrop.kind === 'shield' ? '#0ea5e9' : (healthDrop.kind === 'lemon' ? '#facc15' : '#94a3b8');
+        ctx.fillStyle = healthDrop.kind === 'shield' ? '#0ea5e9' : (healthDrop.kind === 'nitro' ? '#f97316' : (healthDrop.kind === 'lemon' ? '#facc15' : '#94a3b8'));
         ctx.beginPath();
         ctx.arc(healthDrop.x, healthDrop.y, heartSize * 0.4, 0, Math.PI * 2);
         ctx.fill();
+    }
+}
+
+function drawSkids() {
+    if (skids.length === 0) return;
+    ctx.fillStyle = '#020617';
+    for (const s of skids) {
+        ctx.globalAlpha = s.alpha;
+        ctx.fillRect(s.x - 2, s.y - 4, 4, 9);
+    }
+    ctx.globalAlpha = 1;
+}
+
+function drawTraffic() {
+    for (const t of trafficCars) {
+        const sprite = trafficSprites[t.variant];
+        if (sprite) {
+            ctx.drawImage(sprite, t.x, t.y);
+        } else {
+            ctx.fillStyle = t.variant === 0 ? '#2563eb' : '#eab308';
+            ctx.fillRect(t.x, t.y, t.w, t.h);
+        }
+        // Amber turn blinker prior to lane change
+        if (t.blinkTimer > 0 && Math.floor(t.blinkTimer / 140) % 2 === 0 && t.targetLane !== t.lane) {
+            ctx.fillStyle = '#fbbf24';
+            const bx = t.targetLane > t.lane ? t.x + t.w - 5 : t.x + 1;
+            ctx.fillRect(bx, t.y + 4, 4, 6);
+            ctx.fillRect(bx, t.y + t.h - 10, 4, 6);
+        }
+    }
+}
+
+function drawCarBody(ox, oy) {
+    if (carSprite) {
+        ctx.drawImage(carSprite, ox, oy);
+    } else if (carImageLoaded) {
+        ctx.drawImage(carImage, ox, oy, carWidth, carHeight);
+    } else {
+        ctx.fillStyle = 'red';
+        ctx.fillRect(ox, oy, carWidth, carHeight);
     }
 }
 
@@ -1240,10 +1646,21 @@ function drawCar() {
     const cx = x + carWidth / 2;
     const cy = carY + carHeight / 2;
 
-    if (hasShield || Math.abs(carAngle) > 0.002) {
+    if (hasShield || nitroTimer > 0 || Math.abs(carAngle) > 0.002) {
         ctx.save();
         ctx.translate(cx, cy);
         if (carAngle) ctx.rotate(carAngle);
+        if (nitroTimer > 0) {
+            const flameH = carHeight * (0.28 + Math.random() * 0.14);
+            ctx.fillStyle = 'rgba(249, 115, 22, 0.85)';
+            ctx.beginPath();
+            ctx.moveTo(-carWidth * 0.24, carHeight / 2 - 2);
+            ctx.lineTo(-carWidth * 0.1, carHeight / 2 + flameH);
+            ctx.lineTo(0, carHeight / 2);
+            ctx.lineTo(carWidth * 0.1, carHeight / 2 + flameH);
+            ctx.lineTo(carWidth * 0.24, carHeight / 2 - 2);
+            ctx.fill();
+        }
         if (hasShield) {
             ctx.strokeStyle = 'rgba(56, 189, 248, 0.85)';
             ctx.lineWidth = 3;
@@ -1251,26 +1668,69 @@ function drawCar() {
             ctx.ellipse(0, 0, carWidth * 0.68, carHeight * 0.56, 0, 0, Math.PI * 2);
             ctx.stroke();
         }
-        if (carSprite) {
-            ctx.drawImage(carSprite, -carWidth / 2, -carHeight / 2);
-        } else if (carImageLoaded) {
-            ctx.drawImage(carImage, -carWidth / 2, -carHeight / 2, carWidth, carHeight);
-        } else {
-            ctx.fillStyle = 'red';
-            ctx.fillRect(-carWidth / 2, -carHeight / 2, carWidth, carHeight);
-        }
+        drawCarBody(-carWidth / 2, -carHeight / 2);
         ctx.restore();
         return;
     }
 
-    if (carSprite) {
-        ctx.drawImage(carSprite, x, carY);
-    } else if (carImageLoaded) {
-        ctx.drawImage(carImage, x, carY, carWidth, carHeight);
-    } else {
-        ctx.fillStyle = 'red';
-        ctx.fillRect(x, carY, carWidth, carHeight);
+    drawCarBody(x, carY);
+}
+
+function drawNightAndLights() {
+    if (nightAlpha <= 0.02) return;
+    ctx.fillStyle = `rgba(2, 6, 23, ${nightAlpha.toFixed(3)})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (nightAlpha > 0.12) {
+        const beamAlpha = Math.min(0.28, nightAlpha * 0.62);
+        ctx.fillStyle = `rgba(254, 243, 199, ${beamAlpha.toFixed(3)})`;
+        const px = carBaseX + carOffsetX + carWidth / 2;
+        const beamLen = Math.min(180, carY * 0.45);
+        for (const side of [-1, 1]) {
+            const lx = px + side * carWidth * 0.26;
+            ctx.beginPath();
+            ctx.moveTo(lx - 3, carY + 4);
+            ctx.lineTo(lx - 26, carY - beamLen);
+            ctx.lineTo(lx + 26, carY - beamLen);
+            ctx.lineTo(lx + 3, carY + 4);
+            ctx.closePath();
+            ctx.fill();
+        }
     }
+}
+
+function drawWindStreaks() {
+    const effSpeed = nitroTimer > 0 ? Math.min(4.5, gameSpeedMultiplier + 0.65) : gameSpeedMultiplier;
+    if (effSpeed < 2.55) return;
+    const alpha = Math.min(0.32, (effSpeed - 2.55) * 0.22);
+    ctx.fillStyle = `rgba(226, 232, 240, ${alpha.toFixed(3)})`;
+    for (const ws of windStreaks) {
+        const x = ws.side === 0 ? carBaseX + canvas.width * ws.xRatio : carBaseX + roadWidth - canvas.width * ws.xRatio;
+        ctx.fillRect(x, ws.y, 2, ws.len);
+    }
+}
+
+function drawParticles() {
+    if (particles.length === 0) return;
+    for (const p of particles) {
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
+}
+
+function drawFloatingTexts() {
+    if (floatingTexts.length === 0) return;
+    ctx.font = `${Math.max(8, Math.round(carWidth * 0.23))}px "Press Start 2P", monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const ft of floatingTexts) {
+        ctx.globalAlpha = ft.alpha;
+        ctx.fillStyle = ft.color;
+        ctx.fillText(ft.text, ft.x, ft.y);
+    }
+    ctx.globalAlpha = 1;
 }
 
 function drawMergeBanner() {
@@ -1303,10 +1763,16 @@ function drawScene() {
         ctx.translate((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 8);
     }
     drawRoad();
+    drawSkids();
     drawSpeedTrap();
     drawLampposts();
+    drawTraffic();
     drawHealthDrop();
     drawCar();
+    drawNightAndLights();
+    drawWindStreaks();
+    drawParticles();
+    drawFloatingTexts();
     drawMergeBanner();
     if (shaking) ctx.restore();
 
@@ -1329,15 +1795,17 @@ function updateHUDDisplay() {
         lastHudBest = highScore;
         hudBest.textContent = highScore;
     }
-    const speedKmh = Math.round(gameSpeedMultiplier * 100);
+    const effSpeed = nitroTimer > 0 ? Math.min(4.5, gameSpeedMultiplier + 0.65) : gameSpeedMultiplier;
+    const speedKmh = Math.round(effSpeed * 100);
     if (speedKmh !== lastHudSpeed) {
         lastHudSpeed = speedKmh;
-        hudSpeed.textContent = `${speedKmh} km/h`;
-        speedBarFill.style.transform = `scaleX(${Math.min(1, gameSpeedMultiplier / MAX_SPEED).toFixed(4)})`;
+        hudSpeed.textContent = nitroTimer > 0 ? `${speedKmh} km/h!` : `${speedKmh} km/h`;
+        speedBarFill.style.transform = `scaleX(${Math.min(1, effSpeed / MAX_SPEED).toFixed(4)})`;
         let speedBarColor = '#38bdf8';
-        if (gameSpeedMultiplier >= 3.4) speedBarColor = '#ef4444';
-        else if (gameSpeedMultiplier >= 2.5) speedBarColor = '#f97316';
-        else if (gameSpeedMultiplier >= 1.7) speedBarColor = '#facc15';
+        if (nitroTimer > 0) speedBarColor = '#fb923c';
+        else if (effSpeed >= 3.4) speedBarColor = '#ef4444';
+        else if (effSpeed >= 2.5) speedBarColor = '#f97316';
+        else if (effSpeed >= 1.7) speedBarColor = '#facc15';
         if (speedBarColor !== lastSpeedColor) {
             lastSpeedColor = speedBarColor;
             speedBarFill.style.backgroundColor = speedBarColor;
@@ -1391,6 +1859,7 @@ function resetGame() {
     combo = 1;
     health = 100;
     hasShield = false;
+    nitroTimer = 0;
     slipTimer = 0;
     shakeTimer = 0;
     flashAlpha = 0;
@@ -1406,6 +1875,15 @@ function resetGame() {
     mergeBannerText = '';
     mergeBannerTimer = 0;
     lampposts = [];
+    trafficCars = [];
+    trafficCooldown = 4800 + Math.random() * 3200;
+    skids = [];
+    particles = [];
+    floatingTexts = [];
+    distanceMeters = 0;
+    maxKmhReached = 100;
+    nearMissCount = 0;
+    nightAlpha = 0;
     autoSpeed = 1.0;
     targetAutoSpeed = 1.15 + Math.random() * 0.25;
     speedShiftTimer = 1800 + Math.random() * 1800;
@@ -1508,11 +1986,14 @@ function animate(timestamp) {
     lastTimestamp = timestamp;
 
     if (carBlinkRemaining > 0) carBlinkRemaining = Math.max(0, carBlinkRemaining - deltaTime);
+    if (nitroTimer > 0) nitroTimer = Math.max(0, nitroTimer - deltaTime);
     if (slipTimer > 0) slipTimer = Math.max(0, slipTimer - deltaTime);
     if (shakeTimer > 0) shakeTimer = Math.max(0, shakeTimer - deltaTime);
     if (flashAlpha > 0) flashAlpha = Math.max(0, flashAlpha - deltaTime * 0.0018);
 
     updateSpeedControl(deltaTime);
+    const effSpeed = nitroTimer > 0 ? Math.min(4.5, gameSpeedMultiplier + 0.65) : gameSpeedMultiplier;
+    updateEngineHum(true);
     updateCar(deltaTime);
     updateDiversion(deltaTime);
     if (gameOver) {
@@ -1520,15 +2001,20 @@ function animate(timestamp) {
         return;
     }
     updateSpeedTrap(deltaTime);
-    updateLampposts(deltaTime);
-    updateHealthDrop(deltaTime);
-
+    updateLampposts(deltaTime, effSpeed);
     if (gameOver) {
         drawScene();
         return;
     }
+    updateTraffic(deltaTime, effSpeed);
+    if (gameOver) {
+        drawScene();
+        return;
+    }
+    updateHealthDrop(deltaTime, effSpeed);
+    updateFX(deltaTime, effSpeed);
 
-    worldScrollY = (worldScrollY + (gameSpeedMultiplier * baseObstacleSpeed / 1000) * deltaTime) % ROAD_TILE_H;
+    worldScrollY = (worldScrollY + (effSpeed * baseObstacleSpeed / 1000) * deltaTime) % ROAD_TILE_H;
 
     drawScene();
 
