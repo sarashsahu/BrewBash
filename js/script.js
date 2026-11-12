@@ -99,11 +99,14 @@ const moveRightBtn = document.getElementById('moveRightBtn');
 
 let carImageLoaded = false;
 let beerImageLoaded = false;
-let heartImageLoaded = false;
+let spannerImageLoaded = false;
 let lemonImageLoaded = false;
+let coneImageLoaded = false;
+let oilImageLoaded = false;
+let shieldImageLoaded = false;
 let carSprite = null;
 let beerSprite = null;
-let heartSprite = null;
+let spannerSprite = null;
 let lemonSprite = null;
 let coneSprite = null;
 let oilSprite = null;
@@ -123,67 +126,11 @@ function bakeSprite(img, w, h) {
     return off;
 }
 
-function bakeProceduralSprites() {
-    if (brewWidth <= 0 || heartSize <= 0) return;
-    // Traffic cone sprite
-    const cw = Math.max(16, Math.round(brewWidth * 1.1));
-    const ch = Math.max(18, Math.round(cw * 1.15));
-    const cc = document.createElement('canvas');
-    cc.width = cw;
-    cc.height = ch;
-    const cctx = cc.getContext('2d');
-    cctx.fillStyle = '#ea580c';
-    cctx.fillRect(1, ch - 4, cw - 2, 4);
-    cctx.fillStyle = '#f97316';
-    cctx.beginPath();
-    cctx.moveTo(cw * 0.36, 1);
-    cctx.lineTo(cw * 0.64, 1);
-    cctx.lineTo(cw * 0.88, ch - 4);
-    cctx.lineTo(cw * 0.12, ch - 4);
-    cctx.closePath();
-    cctx.fill();
-    cctx.fillStyle = '#f8fafc';
-    cctx.fillRect(cw * 0.25, ch * 0.42, cw * 0.5, Math.max(3, ch * 0.16));
-    coneSprite = cc;
-
-    // Oil slick puddle sprite
-    const ow = Math.max(24, Math.round(carWidth * 0.95));
-    const oh = Math.max(16, Math.round(ow * 0.62));
-    const oc = document.createElement('canvas');
-    oc.width = ow;
-    oc.height = oh;
-    const octx = oc.getContext('2d');
-    octx.fillStyle = '#090d16';
-    octx.beginPath();
-    octx.ellipse(ow / 2, oh / 2, ow * 0.46, oh * 0.42, 0.15, 0, Math.PI * 2);
-    octx.fill();
-    octx.strokeStyle = 'rgba(139, 92, 246, 0.65)';
-    octx.lineWidth = 2;
-    octx.beginPath();
-    octx.ellipse(ow * 0.45, oh * 0.45, ow * 0.26, oh * 0.18, -0.2, 0, Math.PI * 1.4);
-    octx.stroke();
-    oilSprite = oc;
-
-    // Shield pickup sprite
-    const ss = Math.max(20, Math.round(heartSize * 1.1));
-    const sc = document.createElement('canvas');
-    sc.width = ss;
-    sc.height = ss;
-    const sctx = sc.getContext('2d');
-    sctx.fillStyle = '#0ea5e9';
-    sctx.strokeStyle = '#e0f2fe';
-    sctx.lineWidth = 2;
-    sctx.beginPath();
-    sctx.moveTo(ss / 2, 2);
-    sctx.lineTo(ss - 3, ss * 0.26);
-    sctx.lineTo(ss - 4, ss * 0.64);
-    sctx.lineTo(ss / 2, ss - 2);
-    sctx.lineTo(4, ss * 0.64);
-    sctx.lineTo(3, ss * 0.26);
-    sctx.closePath();
-    sctx.fill();
-    sctx.stroke();
-    shieldSprite = sc;
+/** Bake an image preserving its natural height/width ratio for crisp arcade scaling. */
+function bakeAspectSprite(img, targetW, fallbackRatio) {
+    if (targetW <= 0) return null;
+    const ratio = (img.complete && img.naturalWidth > 0) ? (img.naturalHeight / img.naturalWidth) : fallbackRatio;
+    return bakeSprite(img, targetW, Math.max(1, Math.round(targetW * ratio)));
 }
 
 function bakeAllSprites() {
@@ -192,9 +139,11 @@ function bakeAllSprites() {
     }
     carSprite = bakeSprite(carImage, carWidth, carHeight);
     beerSprite = bakeSprite(beerImage, brewWidth, brewHeight);
-    heartSprite = bakeSprite(heartImage, Math.round(heartSize * 1.15), Math.round(heartSize * 0.99));
-    lemonSprite = bakeSprite(lemonImage, Math.round(heartSize * 1.25), Math.round(heartSize * 1.01));
-    bakeProceduralSprites();
+    spannerSprite = bakeAspectSprite(spannerImage, Math.round(heartSize * 1.15), 220 / 213);
+    lemonSprite = bakeAspectSprite(lemonImage, Math.round(heartSize * 1.25), 178 / 220);
+    coneSprite = bakeAspectSprite(coneImage, Math.max(18, Math.round(brewWidth * 1.35)), 220 / 184);
+    oilSprite = bakeAspectSprite(oilImage, Math.max(26, Math.round(carWidth * 1.05)), 233 / 240);
+    shieldSprite = bakeAspectSprite(shieldImage, Math.max(20, Math.round(heartSize * 1.1)), 220 / 190);
 }
 
 function loadSprite(src, onLoad) {
@@ -214,8 +163,11 @@ function loadSprite(src, onLoad) {
 
 const carImage = loadSprite('assets/images/car.png', loaded => { carImageLoaded = loaded; });
 const beerImage = loadSprite('assets/images/beer.png', loaded => { beerImageLoaded = loaded; });
-const heartImage = loadSprite('assets/images/heart.png', loaded => { heartImageLoaded = loaded; });
+const spannerImage = loadSprite('assets/images/spanner.png', loaded => { spannerImageLoaded = loaded; });
 const lemonImage = loadSprite('assets/images/lemon.png', loaded => { lemonImageLoaded = loaded; });
+const coneImage = loadSprite('assets/images/cone.png', loaded => { coneImageLoaded = loaded; });
+const oilImage = loadSprite('assets/images/oil.png', loaded => { oilImageLoaded = loaded; });
+const shieldImage = loadSprite('assets/images/shield.png', loaded => { shieldImageLoaded = loaded; });
 
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
@@ -1232,10 +1184,20 @@ function drawLampposts() {
         if (l.type === 'oil') {
             if (oilSprite) {
                 ctx.drawImage(oilSprite, l.x - oilSprite.width / 2, l.y - oilSprite.height / 2);
+            } else {
+                ctx.fillStyle = oilImageLoaded ? '#1e1b4b' : '#090d16';
+                ctx.beginPath();
+                ctx.ellipse(l.x, l.y, Math.max(12, carWidth * 0.48), Math.max(10, carWidth * 0.36), 0, 0, Math.PI * 2);
+                ctx.fill();
             }
         } else if (l.type === 'cone') {
             if (coneSprite) {
                 ctx.drawImage(coneSprite, l.x - coneSprite.width / 2, l.y - coneSprite.height / 2);
+            } else {
+                ctx.fillStyle = coneImageLoaded ? '#fb923c' : '#f97316';
+                ctx.beginPath();
+                ctx.arc(l.x, l.y, brewRadius, 0, Math.PI * 2);
+                ctx.fill();
             }
         } else if (beerSprite) {
             ctx.drawImage(beerSprite, l.x - beerSprite.width / 2, l.y - beerSprite.height / 2);
@@ -1258,12 +1220,12 @@ function drawHealthDrop() {
         ctx.drawImage(lemonSprite, healthDrop.x - lemonSprite.width / 2, healthDrop.y - lemonSprite.height / 2);
     } else if (healthDrop.kind === 'lemon' && lemonImageLoaded) {
         ctx.drawImage(lemonImage, healthDrop.x - heartSize / 2, healthDrop.y - heartSize / 2, heartSize, heartSize);
-    } else if (heartSprite) {
-        ctx.drawImage(heartSprite, healthDrop.x - heartSprite.width / 2, healthDrop.y - heartSprite.height / 2);
-    } else if (heartImageLoaded) {
-        ctx.drawImage(heartImage, healthDrop.x - heartSize / 2, healthDrop.y - heartSize / 2, heartSize, heartSize);
+    } else if (healthDrop.kind === 'heart' && spannerSprite) {
+        ctx.drawImage(spannerSprite, healthDrop.x - spannerSprite.width / 2, healthDrop.y - spannerSprite.height / 2);
+    } else if (healthDrop.kind === 'heart' && spannerImageLoaded) {
+        ctx.drawImage(spannerImage, healthDrop.x - heartSize / 2, healthDrop.y - heartSize / 2, heartSize, heartSize);
     } else {
-        ctx.fillStyle = healthDrop.kind === 'lemon' ? '#facc15' : '#ef4444';
+        ctx.fillStyle = healthDrop.kind === 'shield' ? '#0ea5e9' : (healthDrop.kind === 'lemon' ? '#facc15' : '#94a3b8');
         ctx.beginPath();
         ctx.arc(healthDrop.x, healthDrop.y, heartSize * 0.4, 0, Math.PI * 2);
         ctx.fill();
