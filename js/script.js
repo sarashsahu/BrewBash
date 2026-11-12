@@ -5,6 +5,7 @@ const ctx = canvas.getContext('2d', { alpha: false });
 const CAR_BLINK_DURATION = 1500;
 const CAR_BLINK_INTERVAL = 100;
 const SPEED_CYCLE = [5.0, 4.5, 4.0, 4.5];
+const ROAD_TILE_H = 360;
 
 let carWidth = 44;
 let carHeight = 96;
@@ -37,7 +38,12 @@ let gameOver = false;
 let lampposts = [];
 let gameSpeedMultiplier = 1;
 let manualSpeedOffset = 0;
+let lastHudScore = -1;
 let lastHudSpeed = -1;
+let lastHudLanes = -1;
+let lastHudHealth = -1;
+let lastSpeedColor = '';
+let lastHealthColor = '';
 const keys = { left: false, right: false, up: false, down: false };
 let healthDrop = null;
 let heartCooldown = 8000;
@@ -69,6 +75,10 @@ let heartImageLoaded = false;
 let carSprite = null;
 let beerSprite = null;
 let heartSprite = null;
+let roadTiles = [null, null, null];
+let signCache = { meters: -1, dir: 0, newStart: -1, w: 0, canvas: null };
+let pillCache = { meters: -1, dir: 0, w: 0, canvas: null };
+let bannerCache = { text: '', color: '', canvas: null };
 
 function bakeSprite(img, w, h) {
     if (!img.complete || img.naturalWidth === 0 || w <= 0 || h <= 0) return null;
@@ -104,20 +114,68 @@ const carImage = loadSprite('assets/images/car.png', loaded => { carImageLoaded 
 const beerImage = loadSprite('assets/images/beer.png', loaded => { beerImageLoaded = loaded; });
 const heartImage = loadSprite('assets/images/heart.png', loaded => { heartImageLoaded = loaded; });
 
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+let audioUnlocked = false;
+const canFetchAudio = location.protocol !== 'file:';
+
 function loadSound(src) {
     const audio = new Audio(src);
+    audio.preload = 'auto';
     audio.volume = 0.5;
     audio.onerror = () => console.error(`Failed to load ${src}.`);
-    return audio;
+    const entry = { src, audio, buffer: null, loading: false };
+    if (canFetchAudio && AudioCtx) preloadWebAudio(entry);
+    return entry;
+}
+
+function preloadWebAudio(entry) {
+    if (entry.loading || entry.buffer) return;
+    entry.loading = true;
+    fetch(entry.src)
+        .then(r => (r.ok ? r.arrayBuffer() : null))
+        .then(buf => {
+            if (!buf) return null;
+            if (!audioCtx) audioCtx = new AudioCtx();
+            return audioCtx.decodeAudioData(buf);
+        })
+        .then(decoded => { if (decoded) entry.buffer = decoded; })
+        .catch(() => {});
+}
+
+function unlockAudio() {
+    if (audioUnlocked) return;
+    audioUnlocked = true;
+    if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+    }
 }
 
 const crashSound = loadSound('assets/audio/crash.mp3');
 const gameOverSound = loadSound('assets/audio/gameover.mp3');
 const collectSound = loadSound('assets/audio/health.mp3');
 
-function playSound(audio) {
-    audio.currentTime = 0;
-    audio.play().catch(() => {});
+function stopSound(sound) {
+    sound.audio.pause();
+    sound.audio.currentTime = 0;
+}
+
+function playSound(sound) {
+    unlockAudio();
+    if (sound.buffer && audioCtx) {
+        try {
+            const src = audioCtx.createBufferSource();
+            src.buffer = sound.buffer;
+            const gain = audioCtx.createGain();
+            gain.gain.value = 0.5;
+            src.connect(gain);
+            gain.connect(audioCtx.destination);
+            src.start(0);
+            return;
+        } catch (_) {}
+    }
+    sound.audio.currentTime = 0;
+    sound.audio.play().catch(() => {});
 }
 
 function clearKeys() {
@@ -139,10 +197,14 @@ function clampInZone(x, laneStart, margin) {
 }
 
 function resizeCanvas() {
+    const newW = canvasFrame.clientWidth || 300;
+    const newH = canvasFrame.clientHeight || 400;
+    if (newW === canvas.width && newH === canvas.height && roadTiles[0]) return;
+
     const prevMax = maxOffset;
     const ratio = prevMax > 0 ? carOffsetX / prevMax : 0.5;
-    canvas.width = canvasFrame.clientWidth || 300;
-    canvas.height = canvasFrame.clientHeight || 400;
+    canvas.width = newW;
+    canvas.height = newH;
 
     roadWidth = canvas.width * 0.92;
     laneWidth = roadWidth / 4;
@@ -173,7 +235,11 @@ function resizeCanvas() {
         diversion.totalDist = carY + diversion.signLead;
     }
 
+    signCache.meters = -1;
+    pillCache.meters = -1;
+    bannerCache.text = '';
     bakeAllSprites();
+    bakeRoadTiles();
     for (const l of lampposts) {
         const zone = (diversion && l.y <= diversion.y) ? diversion.newStart : activeStart;
         l.x = clampInZone(l.x, zone, brewWidth * 0.65);
@@ -218,10 +284,18 @@ function togglePause() {
     }
 }
 
-playBtn.addEventListener('click', startCountdown);
-pauseBtn.addEventListener('click', togglePause);
-restartBtn.addEventListener('click', returnToStartScreen);
-closeOverlayBtn.addEventListener('click', returnToStartScreen);
+function bindButtonAction(btn, handler) {
+    btn.addEventListener('click', () => {
+        btn.blur();
+        unlockAudio();
+        handler();
+    });
+}
+
+bindButtonAction(playBtn, startCountdown);
+bindButtonAction(pauseBtn, togglePause);
+bindButtonAction(restartBtn, returnToStartScreen);
+bindButtonAction(closeOverlayBtn, returnToStartScreen);
 
 document.addEventListener('keydown', e => {
     const typing = ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
@@ -245,6 +319,12 @@ document.addEventListener('keyup', e => {
 });
 
 window.addEventListener('blur', clearKeys);
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        clearKeys();
+        if (!paused && !gameOver && !countdownActive) togglePause();
+    }
+});
 
 function bindMoveButton(btn, dir) {
     const start = (e) => {
@@ -286,8 +366,7 @@ function triggerCrash(damage = 25) {
     if (health <= 0) {
         gameOver = true;
         paused = true;
-        crashSound.pause();
-        crashSound.currentTime = 0;
+        stopSound(crashSound);
         playSound(gameOverSound);
         if (animationId) cancelAnimationFrame(animationId);
         animationId = null;
@@ -520,127 +599,207 @@ function getSpeedForScore(currentScore) {
     return SPEED_CYCLE[step % SPEED_CYCLE.length];
 }
 
-function drawBarricadeBox(bx, by, bw, bh) {
-    ctx.fillStyle = '#f97316';
-    ctx.fillRect(bx, by, bw, bh);
-    ctx.fillStyle = '#f8fafc';
+function drawBarricadeBox(targetCtx, bx, by, bw, bh) {
+    targetCtx.fillStyle = '#f97316';
+    targetCtx.fillRect(bx, by, bw, bh);
+    targetCtx.fillStyle = '#f8fafc';
     const seg = Math.max(8, bw / 5);
     for (let sx = 0; sx < bw - seg * 0.5; sx += seg * 2) {
-        ctx.fillRect(bx + sx, by, Math.min(seg, bw - sx), bh);
+        targetCtx.fillRect(bx + sx, by, Math.min(seg, bw - sx), bh);
     }
-    ctx.fillStyle = '#475569';
-    ctx.fillRect(bx + 2, by + bh, 3, 5);
-    ctx.fillRect(bx + bw - 5, by + bh, 3, 5);
+    targetCtx.fillStyle = '#475569';
+    targetCtx.fillRect(bx + 2, by + bh, 3, 5);
+    targetCtx.fillRect(bx + bw - 5, by + bh, 3, 5);
 }
 
-function drawDivider(dx, scrollY) {
+function drawTileDivider(tctx, dx) {
     const w = 7;
     const x = dx - w / 2;
-    ctx.fillStyle = '#f97316';
-    ctx.fillRect(x, 0, w, canvas.height);
-    ctx.fillStyle = '#f8fafc';
-    for (let y = (scrollY % 40) - 40; y < canvas.height; y += 40) {
-        ctx.fillRect(x, y, w, 20);
+    tctx.fillStyle = '#f97316';
+    tctx.fillRect(x, 0, w, ROAD_TILE_H);
+    tctx.fillStyle = '#f8fafc';
+    for (let y = 0; y < ROAD_TILE_H; y += 40) {
+        tctx.fillRect(x, y, w, 20);
     }
 }
 
-function drawRoadSection(laneStart, scrollY) {
-    ctx.fillStyle = '#0f291e';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = '#131822';
-    ctx.fillRect(carBaseX, 0, roadWidth, canvas.height);
-
-    // Active 2-lane corridor
-    ctx.fillStyle = '#222a38';
-    ctx.fillRect(carBaseX + laneStart * laneWidth, 0, laneWidth * 2, canvas.height);
-
-    // Outer road curbs
+function bakeRoadTiles() {
+    if (canvas.width <= 0) return;
     const curbW = 5;
-    ctx.fillStyle = '#e2e8f0';
-    ctx.fillRect(carBaseX - curbW / 2, 0, curbW, canvas.height);
-    ctx.fillRect(carBaseX + roadWidth - curbW / 2, 0, curbW, canvas.height);
-    ctx.fillStyle = '#ef4444';
-    for (let y = (scrollY % 40) - 40; y < canvas.height; y += 40) {
-        ctx.fillRect(carBaseX - curbW / 2, y, curbW, 20);
-        ctx.fillRect(carBaseX + roadWidth - curbW / 2, y, curbW, 20);
-    }
+    for (let laneStart = 0; laneStart <= 2; laneStart++) {
+        let tile = roadTiles[laneStart];
+        if (!tile) {
+            tile = document.createElement('canvas');
+            roadTiles[laneStart] = tile;
+        }
+        tile.width = canvas.width;
+        tile.height = ROAD_TILE_H;
+        const tctx = tile.getContext('2d', { alpha: false });
 
-    // Closed lanes: faint divider lines, red X markers, and scrolling barricades
-    for (let lane = 0; lane < 4; lane++) {
-        if (lane === laneStart || lane === laneStart + 1) continue;
-        const lx = carBaseX + lane * laneWidth;
-        const cx = lx + laneWidth / 2;
+        tctx.fillStyle = '#0f291e';
+        tctx.fillRect(0, 0, canvas.width, ROAD_TILE_H);
+        tctx.fillStyle = '#131822';
+        tctx.fillRect(carBaseX, 0, roadWidth, ROAD_TILE_H);
+        tctx.fillStyle = '#222a38';
+        tctx.fillRect(carBaseX + laneStart * laneWidth, 0, laneWidth * 2, ROAD_TILE_H);
+
+        tctx.fillStyle = '#e2e8f0';
+        tctx.fillRect(carBaseX - curbW / 2, 0, curbW, ROAD_TILE_H);
+        tctx.fillRect(carBaseX + roadWidth - curbW / 2, 0, curbW, ROAD_TILE_H);
+        tctx.fillStyle = '#ef4444';
+        for (let y = 0; y < ROAD_TILE_H; y += 40) {
+            tctx.fillRect(carBaseX - curbW / 2, y, curbW, 20);
+            tctx.fillRect(carBaseX + roadWidth - curbW / 2, y, curbW, 20);
+        }
+
         const barW = Math.min(laneWidth * 0.64, 68);
-
-        ctx.fillStyle = 'rgba(245, 158, 11, 0.14)';
-        for (let y = (scrollY % 90) - 90; y < canvas.height; y += 90) {
-            ctx.fillRect(lx + 8, y, laneWidth - 16, 8);
+        for (let lane = 0; lane < 4; lane++) {
+            if (lane === laneStart || lane === laneStart + 1) continue;
+            const lx = carBaseX + lane * laneWidth;
+            const cx = lx + laneWidth / 2;
+            tctx.fillStyle = 'rgba(245, 158, 11, 0.14)';
+            for (let y = 0; y < ROAD_TILE_H; y += 90) {
+                tctx.fillRect(lx + 8, y, laneWidth - 16, 8);
+            }
+            for (let y = 0; y < ROAD_TILE_H; y += 180) {
+                drawBarricadeBox(tctx, cx - barW / 2, y + 36, barW, 10);
+            }
         }
 
-        for (let y = (scrollY % 180) - 180; y < canvas.height; y += 180) {
-            drawBarricadeBox(cx - barW / 2, y + 36, barW, 10);
+        const activeMidX = Math.round(carBaseX + (laneStart + 1) * laneWidth) - 1;
+        tctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+        for (let y = 0; y < ROAD_TILE_H; y += 60) {
+            tctx.fillRect(activeMidX, y, 2, 30);
         }
-    }
 
-    // Active center lane dashed divider
-    const activeMidX = Math.round(carBaseX + (laneStart + 1) * laneWidth) - 1;
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
-    for (let y = (scrollY % 60) - 60; y < canvas.height; y += 60) {
-        ctx.fillRect(activeMidX, y, 2, 30);
+        if (laneStart > 0) drawTileDivider(tctx, carBaseX + laneStart * laneWidth);
+        if (laneStart + 2 < 4) drawTileDivider(tctx, carBaseX + (laneStart + 2) * laneWidth);
     }
+}
 
-    // Highway dividers separating active lanes from closed lanes
-    if (laneStart > 0) drawDivider(carBaseX + laneStart * laneWidth, scrollY);
-    if (laneStart + 2 < 4) drawDivider(carBaseX + (laneStart + 2) * laneWidth, scrollY);
+function drawRoadBand(laneStart, scrollY, dstY, dstH) {
+    if (dstH <= 0) return;
+    const tile = roadTiles[laneStart];
+    if (!tile) return;
+    const w = canvas.width;
+    let sy = ((dstY - scrollY) % ROAD_TILE_H + ROAD_TILE_H) % ROAD_TILE_H;
+    let dy = dstY;
+    let rem = dstH;
+    while (rem > 0) {
+        const slice = Math.min(rem, ROAD_TILE_H - sy);
+        ctx.drawImage(tile, 0, sy, w, slice, 0, dy, w, slice);
+        dy += slice;
+        rem -= slice;
+        sy = 0;
+    }
+}
+
+function drawMiniIcon(tctx, cx, cy, open) {
+    tctx.strokeStyle = '#ffffff';
+    tctx.lineWidth = 2;
+    tctx.beginPath();
+    if (open) {
+        tctx.moveTo(cx, cy + 5);
+        tctx.lineTo(cx, cy - 5);
+        tctx.moveTo(cx - 3.5, cy - 1.5);
+        tctx.lineTo(cx, cy - 5);
+        tctx.lineTo(cx + 3.5, cy - 1.5);
+    } else {
+        tctx.moveTo(cx - 3.5, cy - 3.5);
+        tctx.lineTo(cx + 3.5, cy + 3.5);
+        tctx.moveTo(cx + 3.5, cy - 3.5);
+        tctx.lineTo(cx - 3.5, cy + 3.5);
+    }
+    tctx.stroke();
 }
 
 function drawSignBoard(d, meters) {
     const signY = d.y + d.signLead;
     if (signY < -80 || signY > canvas.height + 80) return;
 
-    const signW = Math.min(roadWidth * 0.92, 380);
+    const signW = Math.round(Math.min(roadWidth * 0.92, 380));
     const signH = 56;
-    const sx = centerX - signW / 2;
-    const sy = signY - signH / 2;
 
     // Gantry beam
     ctx.fillStyle = '#475569';
     ctx.fillRect(carBaseX, signY - 3, roadWidth, 6);
 
-    // Highway green/amber sign plate
-    ctx.fillStyle = '#064e3b';
-    ctx.fillRect(sx, sy, signW, signH);
-    ctx.strokeStyle = '#facc15';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(sx, sy, signW, signH);
+    if (signCache.meters !== meters || signCache.dir !== d.dir || signCache.newStart !== d.newStart || signCache.w !== signW) {
+        let sc = signCache.canvas;
+        if (!sc) {
+            sc = document.createElement('canvas');
+            signCache.canvas = sc;
+        }
+        sc.width = signW;
+        sc.height = signH;
+        const sctx = sc.getContext('2d');
 
-    const dirText = d.dir > 0 ? 'TAKE RIGHT \u2192' : '\u2190 TAKE LEFT';
-    const fontPx = Math.max(9, Math.min(13, Math.floor(signW / 28)));
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.font = `bold ${fontPx}px "Press Start 2P", cursive`;
-    ctx.fillStyle = '#facc15';
-    ctx.fillText(`${meters}m ROAD CLOSED`, sx + 12, sy + 18);
+        sctx.fillStyle = '#064e3b';
+        sctx.fillRect(0, 0, signW, signH);
+        sctx.strokeStyle = '#facc15';
+        sctx.lineWidth = 3;
+        sctx.strokeRect(1.5, 1.5, signW - 3, signH - 3);
 
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(dirText, sx + 12, sy + 39);
+        const dirText = d.dir > 0 ? 'TAKE RIGHT >>' : '<< TAKE LEFT';
+        const fontPx = Math.max(9, Math.min(12, Math.floor(signW / 29)));
+        sctx.textAlign = 'left';
+        sctx.textBaseline = 'middle';
+        sctx.font = `${fontPx}px "Press Start 2P", monospace`;
+        sctx.fillStyle = '#facc15';
+        sctx.fillText(`${meters}m ROAD CLOSED`, 12, 18);
+        sctx.fillStyle = '#ffffff';
+        sctx.fillText(dirText, 12, 39);
 
-    // Mini 4-lane diagram on the right side of the sign
-    const boxW = 14;
-    const boxGap = 3;
-    const miniX = sx + signW - (boxW * 4 + boxGap * 3 + 12);
-    const miniY = sy + 16;
-    ctx.font = 'bold 11px sans-serif';
-    ctx.textAlign = 'center';
-    for (let lane = 0; lane < 4; lane++) {
-        const open = lane === d.newStart || lane === d.newStart + 1;
-        const bx = miniX + lane * (boxW + boxGap);
-        ctx.fillStyle = open ? '#16a34a' : '#dc2626';
-        ctx.fillRect(bx, miniY, boxW, 24);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(open ? '\u2191' : '\u2715', bx + boxW / 2, miniY + 13);
+        const boxW = 14;
+        const boxGap = 3;
+        const miniX = signW - (boxW * 4 + boxGap * 3 + 12);
+        const miniY = 16;
+        for (let lane = 0; lane < 4; lane++) {
+            const open = lane === d.newStart || lane === d.newStart + 1;
+            const bx = miniX + lane * (boxW + boxGap);
+            sctx.fillStyle = open ? '#16a34a' : '#dc2626';
+            sctx.fillRect(bx, miniY, boxW, 24);
+            drawMiniIcon(sctx, bx + boxW / 2, miniY + 12, open);
+        }
+
+        signCache.meters = meters;
+        signCache.dir = d.dir;
+        signCache.newStart = d.newStart;
+        signCache.w = signW;
     }
+
+    ctx.drawImage(signCache.canvas, Math.round(centerX - signW / 2), Math.round(signY - signH / 2));
+}
+
+function drawWarningPill(d, meters) {
+    const pillW = Math.round(Math.min(canvas.width - 24, 300));
+    const pillH = 28;
+    if (pillCache.meters !== meters || pillCache.dir !== d.dir || pillCache.w !== pillW) {
+        let pc = pillCache.canvas;
+        if (!pc) {
+            pc = document.createElement('canvas');
+            pillCache.canvas = pc;
+        }
+        pc.width = pillW;
+        pc.height = pillH;
+        const pctx = pc.getContext('2d');
+
+        pctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+        pctx.fillRect(0, 0, pillW, pillH);
+        pctx.strokeStyle = '#facc15';
+        pctx.lineWidth = 2;
+        pctx.strokeRect(1, 1, pillW - 2, pillH - 2);
+        pctx.fillStyle = '#facc15';
+        pctx.font = '10px "Press Start 2P", monospace';
+        pctx.textAlign = 'center';
+        pctx.textBaseline = 'middle';
+        pctx.fillText(`${meters}m - ${d.dir > 0 ? 'TAKE RIGHT >>' : '<< TAKE LEFT'}`, pillW / 2, pillH / 2);
+
+        pillCache.meters = meters;
+        pillCache.dir = d.dir;
+        pillCache.w = pillW;
+    }
+    ctx.drawImage(pillCache.canvas, Math.round(centerX - pillW / 2), 10);
 }
 
 function drawDiversionCut(d) {
@@ -652,7 +811,6 @@ function drawDiversionCut(d) {
     const xBottom = d.dir > 0 ? carBaseX + closingLane * laneWidth : carBaseX + (closingLane + 1) * laneWidth;
     const xTop = d.dir > 0 ? carBaseX + (closingLane + 1) * laneWidth : carBaseX + closingLane * laneWidth;
 
-    // Diagonal taper beam & cones
     ctx.strokeStyle = '#f97316';
     ctx.lineWidth = 8;
     ctx.beginPath();
@@ -675,55 +833,28 @@ function drawDiversionCut(d) {
         ctx.fill();
     }
 
-    // Prominent barricade across the closing lane
     const barW = laneWidth * 0.78;
     const barX = carBaseX + closingLane * laneWidth + (laneWidth - barW) / 2;
-    drawBarricadeBox(barX, cutY + tH * 0.45, barW, 13);
+    drawBarricadeBox(ctx, barX, cutY + tH * 0.45, barW, 13);
 }
 
 function drawRoad() {
+    const scrollPx = Math.floor(worldScrollY);
     if (!diversion) {
-        drawRoadSection(activeStart, worldScrollY);
+        drawRoadBand(activeStart, scrollPx, 0, canvas.height);
         return;
     }
 
-    const cutY = Math.max(0, Math.min(canvas.height, diversion.y));
-    if (cutY > 0) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(0, 0, canvas.width, cutY);
-        ctx.clip();
-        drawRoadSection(diversion.newStart, worldScrollY);
-        ctx.restore();
-    }
-    if (cutY < canvas.height) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(0, cutY, canvas.width, canvas.height - cutY);
-        ctx.clip();
-        drawRoadSection(diversion.oldStart, worldScrollY);
-        ctx.restore();
-    }
+    const cutY = Math.round(Math.max(0, Math.min(canvas.height, diversion.y)));
+    drawRoadBand(diversion.newStart, scrollPx, 0, cutY);
+    drawRoadBand(diversion.oldStart, scrollPx, cutY, canvas.height - cutY);
 
     drawDiversionCut(diversion);
     const meters = Math.max(0, Math.min(100, Math.round(((carY - diversion.y) / diversion.totalDist) * 100)));
     drawSignBoard(diversion, meters);
 
-    // Sticky top warning badge while approaching the cut
     if (!diversion.resolved && diversion.y + diversion.signLead > 0) {
-        const msg = `${meters}m \u2022 ${diversion.dir > 0 ? 'TAKE RIGHT \u2192' : '\u2190 TAKE LEFT'}`;
-        const pillW = Math.min(canvas.width - 24, 300);
-        const px = centerX - pillW / 2;
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-        ctx.fillRect(px, 10, pillW, 28);
-        ctx.strokeStyle = '#facc15';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(px, 10, pillW, 28);
-        ctx.fillStyle = '#facc15';
-        ctx.font = 'bold 10px "Press Start 2P", cursive';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(msg, centerX, 24);
+        drawWarningPill(diversion, meters);
     }
 }
 
@@ -749,9 +880,10 @@ function drawHealthDrop() {
     } else if (heartImageLoaded) {
         ctx.drawImage(heartImage, healthDrop.x - heartSize / 2, healthDrop.y - heartSize / 2, heartSize, heartSize);
     } else {
-        ctx.font = `${heartSize}px serif`;
-        ctx.textAlign = 'center';
-        ctx.fillText('❤️', healthDrop.x, healthDrop.y);
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(healthDrop.x, healthDrop.y, heartSize * 0.4, 0, Math.PI * 2);
+        ctx.fill();
     }
 }
 
@@ -772,11 +904,25 @@ function drawCar() {
 
 function drawMergeBanner() {
     if (mergeBannerTimer <= 0 || !mergeBannerText) return;
-    ctx.fillStyle = mergeBannerColor;
-    ctx.font = 'bold 12px "Press Start 2P", cursive';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(mergeBannerText, centerX, 54);
+    if (bannerCache.text !== mergeBannerText || bannerCache.color !== mergeBannerColor) {
+        let bc = bannerCache.canvas;
+        if (!bc) {
+            bc = document.createElement('canvas');
+            bannerCache.canvas = bc;
+        }
+        bc.width = Math.min(340, Math.max(220, canvas.width - 12));
+        bc.height = 24;
+        const bctx = bc.getContext('2d');
+        const fontPx = Math.min(12, Math.max(8, Math.floor((bc.width - 16) / 22)));
+        bctx.fillStyle = mergeBannerColor;
+        bctx.font = `${fontPx}px "Press Start 2P", monospace`;
+        bctx.textAlign = 'center';
+        bctx.textBaseline = 'middle';
+        bctx.fillText(mergeBannerText, bc.width / 2, bc.height / 2);
+        bannerCache.text = mergeBannerText;
+        bannerCache.color = mergeBannerColor;
+    }
+    ctx.drawImage(bannerCache.canvas, Math.round(centerX - bannerCache.canvas.width / 2), 42);
 }
 
 function drawScene() {
@@ -788,25 +934,39 @@ function drawScene() {
 }
 
 function updateHUDDisplay() {
-    hudScore.textContent = score;
+    if (score !== lastHudScore) {
+        lastHudScore = score;
+        hudScore.textContent = score;
+    }
     const speedKmh = Math.round(gameSpeedMultiplier * 100);
-    lastHudSpeed = speedKmh;
-    hudSpeed.textContent = `${speedKmh} km/h`;
-    hudLanes.textContent = `${activeStart + 1} - ${activeStart + 2}`;
-
-    const pacePct = Math.min(100, (gameSpeedMultiplier / 5.5) * 100);
-    speedBarFill.style.width = `${pacePct}%`;
-    let speedBarColor = '#38bdf8';
-    if (gameSpeedMultiplier >= 4.5) speedBarColor = '#ef4444';
-    else if (gameSpeedMultiplier >= 3.0) speedBarColor = '#f97316';
-    else if (gameSpeedMultiplier >= 2.0) speedBarColor = '#facc15';
-    speedBarFill.style.backgroundColor = speedBarColor;
-
-    healthBarFill.style.width = `${health}%`;
-    let healthBarColor = 'limegreen';
-    if (health <= 25) healthBarColor = 'red';
-    else if (health <= 50) healthBarColor = 'orange';
-    healthBarFill.style.backgroundColor = healthBarColor;
+    if (speedKmh !== lastHudSpeed) {
+        lastHudSpeed = speedKmh;
+        hudSpeed.textContent = `${speedKmh} km/h`;
+        speedBarFill.style.transform = `scaleX(${Math.min(1, gameSpeedMultiplier / 5.5).toFixed(4)})`;
+        let speedBarColor = '#38bdf8';
+        if (gameSpeedMultiplier >= 4.5) speedBarColor = '#ef4444';
+        else if (gameSpeedMultiplier >= 3.0) speedBarColor = '#f97316';
+        else if (gameSpeedMultiplier >= 2.0) speedBarColor = '#facc15';
+        if (speedBarColor !== lastSpeedColor) {
+            lastSpeedColor = speedBarColor;
+            speedBarFill.style.backgroundColor = speedBarColor;
+        }
+    }
+    if (activeStart !== lastHudLanes) {
+        lastHudLanes = activeStart;
+        hudLanes.textContent = `${activeStart + 1} - ${activeStart + 2}`;
+    }
+    if (health !== lastHudHealth) {
+        lastHudHealth = health;
+        healthBarFill.style.transform = `scaleX(${Math.max(0, health / 100).toFixed(2)})`;
+        let healthBarColor = 'limegreen';
+        if (health <= 25) healthBarColor = 'red';
+        else if (health <= 50) healthBarColor = 'orange';
+        if (healthBarColor !== lastHealthColor) {
+            lastHealthColor = healthBarColor;
+            healthBarFill.style.backgroundColor = healthBarColor;
+        }
+    }
 }
 
 function updateCar(deltaTime) {
@@ -838,11 +998,14 @@ function resetGame() {
     healthDrop = null;
     heartCooldown = 6000 + Math.random() * 6000;
     carBlinkRemaining = 0;
+    lastHudScore = -1;
+    lastHudSpeed = -1;
+    lastHudLanes = -1;
+    lastHudHealth = -1;
     clearKeys();
 
     for (const sound of [crashSound, gameOverSound, collectSound]) {
-        sound.pause();
-        sound.currentTime = 0;
+        stopSound(sound);
     }
 
     nameOverlay.style.display = 'none';
@@ -855,7 +1018,7 @@ function drawCountdown(number) {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const fontSize = Math.min(100, Math.floor(canvas.width * 0.28));
-    ctx.font = `bold ${fontSize}px "Press Start 2P", cursive`;
+    ctx.font = `${fontSize}px "Press Start 2P", monospace`;
     ctx.fillStyle = 'white';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -887,6 +1050,7 @@ function countdownAnimation(timestamp) {
 }
 
 function handleStartScreenClick() {
+    unlockAudio();
     startScreenOverlay.style.display = 'none';
     startCountdown();
 }
@@ -895,6 +1059,14 @@ window.addEventListener('resize', () => {
     resizeCanvas();
     if (paused || countdownActive || gameOver) drawScene();
 });
+
+if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => {
+        signCache.meters = -1;
+        pillCache.meters = -1;
+        bannerCache.text = '';
+    });
+}
 
 window.onload = () => {
     resizeCanvas();
@@ -911,7 +1083,7 @@ function animate(timestamp) {
     if (paused || gameOver || countdownActive) return;
 
     const MAX_DELTA_TIME = 100;
-    const deltaTime = Math.min(timestamp - lastTimestamp, MAX_DELTA_TIME);
+    const deltaTime = Math.max(0, Math.min(timestamp - lastTimestamp, MAX_DELTA_TIME));
     lastTimestamp = timestamp;
 
     if (carBlinkRemaining > 0) {
@@ -933,7 +1105,7 @@ function animate(timestamp) {
         return;
     }
 
-    worldScrollY = (worldScrollY + (gameSpeedMultiplier * baseObstacleSpeed / 1000) * deltaTime) % 360;
+    worldScrollY = (worldScrollY + (gameSpeedMultiplier * baseObstacleSpeed / 1000) * deltaTime) % ROAD_TILE_H;
 
     drawScene();
 
