@@ -1,6 +1,6 @@
 # BrewBash
 
-**BrewBash** is a fast-paced, responsive HTML5 Canvas highway arcade game built with vanilla HTML, CSS, and JavaScript (zero frameworks, zero build step). You pilot a sports car across a 4-lane highway where only 2 adjacent lanes are open at a time, weaving through falling beer bottles, traffic cones, oil spills, speed cameras, and slower AI traffic at speeds up to **400 km/h** (**450 km/h** under Nitro Boost).
+**BrewBash** is a fast-paced, responsive HTML5 Canvas highway arcade game built with vanilla HTML, CSS, and JavaScript (zero frameworks, zero build step). You pilot a sports car across a 4-lane highway where 2 adjacent lanes are open at a time, weaving through falling beer bottles, traffic cones, and oil spills at speeds up to **400 km/h**.
 
 ---
 
@@ -12,7 +12,7 @@ BrewBash/
 ├── css/
 │   └── style.css               # Borderless responsive styles for mobile & desktop
 ├── js/
-│   └── script.js               # 60 FPS canvas engine, physics, AI traffic, FX & Web Audio
+│   └── script.js               # 60 FPS canvas engine, physics, pickups, FX & audio
 └── assets/
     ├── images/
     │   ├── car.png             # Player sports car sprite (180x360 RGBA)
@@ -38,14 +38,14 @@ BrewBash/
 | **Manual Speed Boost / Brake** | `W` / `S` or `&uarr;` / `&darr;` | Automatic dynamic speed curve |
 | **Play / Pause** | `Space` or Play/Pause buttons | Tap Play / Pause buttons |
 | **Restart Run** | Restart button / Try Again! | Tap Restart / Try Again! |
-| **Mute / Unmute Sound & Hum** | Speaker toggle button | Tap Speaker toggle button |
+| **Mute / Unmute Sound** | Speaker toggle button | Tap Speaker toggle button |
 
 ---
 
 ## Architecture & Game Mechanics Explained
 
 ### 1. Responsive Sizing & Natural Sprite Aspect Ratios
-On load and window resize, [`resizeCanvas()`](js/script.js) sizes the canvas to fit the viewport cleanly without external frame borders. Sprite dimensions scale proportionally with lane width and preserve each PNG's exact `naturalHeight / naturalWidth` ratio via [`bakeAspectSprite()`](js/script.js) so tall assets (like the `82x280` beer bottle) never stretch or compress.
+On load and window resize, [`resizeCanvas()`](js/script.js) sizes the canvas cleanly inside its borderless container (`canvasFrame`). Sprite dimensions scale proportionally with lane width and preserve each PNG's exact `naturalHeight / naturalWidth` ratio via [`bakeAspectSprite()`](js/script.js) so tall assets (like the `82x280` beer bottle) never stretch or compress.
 
 ```js
 /** Bake an image preserving its natural height/width ratio for crisp arcade scaling. */
@@ -57,18 +57,18 @@ function bakeAspectSprite(img, targetW, fallbackRatio) {
 ```
 
 ### 2. Zero-Lag Offscreen Caching & HUD Diffing
-To eliminate mobile frame drops, static asphalt/divider tiles (`360px` tall in `roadTiles`), road signs (`signCache`), radar plates (`speedCamCache`), and sprites (`bakeAllSprites()`) are rendered once onto offscreen canvases and stamped each frame via `drawImage`. HUD DOM updates only fire when a displayed value changes, and the Pace/Health bars animate via GPU `transform: scaleX(...)` rather than triggering layout reflows:
+Static asphalt/divider tiles (`360px` tall in `roadTiles`), road signs (`signCache`), warning pills (`pillCache`), merge banners (`bannerCache`), and PNG sprites (`bakeAllSprites()`) are rendered once onto offscreen canvases and stamped each frame via `drawImage`. HUD DOM updates only fire when values change, and the Pace/Health bars animate via GPU `transform: scaleX(...)` without layout thrashing:
 
 ```js
 if (speedKmh !== lastHudSpeed) {
     lastHudSpeed = speedKmh;
-    hudSpeed.textContent = nitroTimer > 0 ? `${speedKmh} km/h!` : `${speedKmh} km/h`;
-    speedBarFill.style.transform = `scaleX(${Math.min(1, effSpeed / MAX_SPEED).toFixed(4)})`;
+    hudSpeed.textContent = `${speedKmh} km/h`;
+    speedBarFill.style.transform = `scaleX(${Math.min(1, gameSpeedMultiplier / MAX_SPEED).toFixed(4)})`;
 }
 ```
 
 ### 3. Randomized Speed Walk (Up to 400 km/h)
-Rather than climbing monotonically until unplayable, [`pickNextSpeedTarget()`](js/script.js) shifts the car's baseline cruise speed up and down unpredictably within a score-advancing floor (`100` to `240 km/h`) and ceiling (up to `400 km/h`, `MAX_SPEED = 4.0`). Holding `W`/`Up` or `S`/`Down` temporarily offsets your speed before smoothly settling back to cruise pace.
+[`pickNextSpeedTarget()`](js/script.js) shifts the baseline cruise speed up and down unpredictably within a score-advancing floor (`100` to `240 km/h`) and ceiling (up to `400 km/h`, `MAX_SPEED = 4.0`). Holding `W`/`Up` or `S`/`Down` temporarily boosts or slows speed before smoothly settling back to cruise pace.
 
 ```js
 function pickNextSpeedTarget() {
@@ -86,7 +86,7 @@ function pickNextSpeedTarget() {
 ```
 
 ### 4. Strictly Adjacent 2-Lane Road Diversions
-The highway has 4 lanes, with 2 open at a time (`1 - 2`, `2 - 3`, or `3 - 4`, tracked by `activeStart` in `{0, 1, 2}`). When a roadwork diversion spawns in [`updateDiversion()`](js/script.js), the corridor always shifts by exactly one lane (`0 <-> 1 <-> 2`), never skipping straight from `1-2` to `3-4`. An overhead warning sign counts down distance in meters (`50m`, `30m`, etc.): merging cleanly awards `+100 x combo SAFE MERGE!`, while hitting the barricade deducts `25 HP`.
+The highway has 4 lanes, with 2 open at a time (`1 - 2`, `2 - 3`, or `3 - 4`, tracked by `activeStart` in `{0, 1, 2}`). When a diversion spawns in [`updateDiversion()`](js/script.js), the open corridor always shifts by one adjacent lane (`0 <-> 1 <-> 2`), never jumping straight from `1-2` to `3-4`. Merging smoothly past the countdown sign awards `+100 x combo SAFE MERGE!`; hitting the barricade deducts `25 HP`.
 
 ```js
 // Shift only to physically adjacent 2-lane corridors: 0 <-> 1 <-> 2
@@ -94,34 +94,31 @@ const dir = activeStart === 0 ? 1 : (activeStart === 2 ? -1 : (Math.random() < 0
 const newStart = activeStart + dir;
 ```
 
-### 5. Obstacles, AI Highway Traffic & Speed Cameras
-- **Beer Bottles (`beer.png`) & Cones (`cone.png`):** Standard hazards (`-25 HP` on hit, `1.5s` blink invulnerability). Some beer bottles sway across the active corridor (`vx`).
-- **Oil Spills (`oil.png`):** Causes `OIL SLIP!` for `950ms` (reduced steering grip + sideways drift), cleared instantly by collecting a Lemon or Nitro.
-- **AI Traffic Cars ([`updateTraffic()`](js/script.js)):** Pre-baked blue coupes and yellow sedans cruise ahead at slower speeds (`0.44x–0.58x` road speed) with an escape lane always left open. They flash amber turn blinkers before smoothly sliding to the adjacent open lane, awarding `+75 x combo` on close overtakes (`-30 HP` on collision).
-- **Speed Cameras ([`updateSpeedTrap()`](js/script.js)):** Spawn once speed passes `155 km/h` with a radar limit sign (`CAM MAX 180/200/220/240`). Passing under the limit earns `+150 x combo`; speeding triggers a white camera flash and `-100` points.
-
-### 6. Pickups, Nitro Boost & Close-Call Combos
-Pickups sway gently down open lanes via [`updateHealthDrop()`](js/script.js):
+### 5. Obstacles, Pickups & Close-Call Combos
+- **Beer Bottles (`beer.png`) & Traffic Cones (`cone.png`):** Standard hazards (`-25 HP` on hit, `1.5s` blink invulnerability). Some beer bottles sway horizontally across the open corridor (`vx`).
+- **Oil Spills (`oil.png`):** Causes `OIL SLIP!` for `950ms` (reduced steering grip + sideways drift).
 - **Spanner (`spanner.png`):** Restores `+25 HP`.
-- **Lemon (`lemon.png`):** Clears `OIL SLIP!`, heals `+10 HP`, and awards `+100 x combo`.
-- **Shield (`shield.png`):** Absorbs the next crash completely (`SHIELD SAVED!`).
-- **Nitro Boost (`nitroTimer`):** Grants `5s` of flame exhaust, temporary top speed boost (`up to 450 km/h`), oil immunity, and lets you smash straight through bottles, cones, and AI traffic (`+100` to `+150 x combo SMASH!`).
-- **Close-Call Combo (`combo = 1..4`):** Grazing past obstacles (`brewRadius + 14`) or traffic builds your multiplier up to `x4`.
+- **Lemon (`lemon.png`):** Clears `OIL SLIP!`, restores `+10 HP`, and awards `+100 x combo`.
+- **Shield (`shield.png`):** Draws a protective ring around the car and absorbs the next collision (`SHIELD SAVED!`).
+- **Close-Call Combo (`combo = 1..4`):** Grazing past obstacles (`brewRadius + 14`) builds your multiplier up to `x4` and increments your `Close` run total.
 
 ```js
-} else if (nitroTimer > 0 && rectCircleColliding(l.x, l.y, brewRadius + 4, carX, carY, carWidth, carHeight)) {
-    l.checked = true;
-    const pts = 100 * combo;
+if (l.nearMiss) {
+    nearMissCount++;
+    combo = Math.min(4, combo + 1);
+    const pts = 50 * combo;
     score += pts;
     syncHighScore();
-    spawnSparks(l.x, l.y, '#f97316', 10);
-    addFloatText(l.x, l.y - 10, `+${pts} SMASH!`, '#fb923c');
+    showBanner(`+${pts} CLOSE CALL x${combo}`, '#facc15', 1100);
+    playTone(540 + combo * 60, 820 + combo * 60, 0.09);
+    haptic(15);
+}
 ```
 
-### 7. Day/Night Cycle, Pooled FX, Web Audio & Run Summary
-- **Atmosphere & Pooled FX:** [`updateFX()`](js/script.js) cycles lighting smoothly between day and night every `1,800` points, switching on translucent headlight beams in [`drawNightAndLights()`](js/script.js), rendering capped tire skid marks (`24`), square spark bursts (`28`), floating score popups (`6`), and high-speed wind streaks above `255 km/h`.
-- **Web Audio + Engine Hum:** Audio clips are pre-decoded into Web Audio buffers where allowed, paired with synthesized arcade chimes (`playTone()`) and a continuous low-pass `sawtooth` engine hum whose pitch scales with `km/h` and stops cleanly on pause, mute, or Game Over.
-- **Mobile Haptics & Persistent Stats:** Triggers subtle `navigator.vibrate` pulses on pickups, near misses, oil slips, and crashes, persists your all-time `Best` score in `localStorage` (`brewBashHighScore`), and summarizes **Distance (`km`)**, **Top Speed (`km/h`)**, and **Close Calls** on the Game Over card.
+### 6. Impact Sparks, Audio, Haptics & Run Summary
+- **Impact Sparks & Screen Shake:** Crashes and pickups burst lightweight square particles (`particles` capped at `28`) alongside screen shake and flash feedback.
+- **Web Audio SFX:** Pre-decodes MP3 sound effects (`crash.mp3`, `gameover.mp3`, `health.mp3`) into Web Audio buffers and plays crisp synth chimes via `playTone()`.
+- **Mobile Haptics & Persistent Stats:** Fires optional `navigator.vibrate` pulses on mobile, saves your all-time `Best` score in `localStorage` (`brewBashHighScore`), and displays **Distance (`km`)**, **Top Speed (`km/h`)**, and **Close Calls** on the Game Over popup.
 
 ---
 
