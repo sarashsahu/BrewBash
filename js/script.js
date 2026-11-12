@@ -27,14 +27,28 @@ let carY = 0;
 let activeStart = 1; // 0 => lanes 1-2, 1 => lanes 2-3, 2 => lanes 3-4
 let diversion = null;
 let diversionCooldown = 5500;
+let speedTrap = null;
+let speedTrapCooldown = 12000;
 let mergeBannerText = '';
 let mergeBannerColor = '#22c55e';
 let mergeBannerTimer = 0;
 
 let carOffsetX = 0;
+let carAngle = 0;
 let worldScrollY = 0;
 let score = 0;
+let highScore = 0;
+try {
+    highScore = parseInt(localStorage.getItem('brewBashHighScore') || '0', 10) || 0;
+} catch (_) {}
+let combo = 1;
 let health = 100;
+let hasShield = false;
+let slipTimer = 0;
+let slipDir = 1;
+let shakeTimer = 0;
+let flashColor = '#ef4444';
+let flashAlpha = 0;
 let gameOver = false;
 let lampposts = [];
 let autoSpeed = 1.0;
@@ -43,12 +57,17 @@ let speedShiftTimer = 2500;
 let gameSpeedMultiplier = 1;
 let manualSpeedOffset = 0;
 let lastHudScore = -1;
+let lastHudCombo = -1;
+let lastHudBest = -1;
 let lastHudSpeed = -1;
 let lastHudLanes = -1;
 let lastHudHealth = -1;
 let lastSpeedColor = '';
 let lastHealthColor = '';
 const keys = { left: false, right: false, up: false, down: false };
+let dragActive = false;
+let dragLastX = 0;
+let dragSteerDir = 0;
 let healthDrop = null;
 let heartCooldown = 8000;
 let animationId = null;
@@ -57,15 +76,20 @@ let countdownActive = false;
 let countdownStartTime = 0;
 let carBlinkRemaining = 0;
 let lastTimestamp = 0;
+let muted = false;
 
 const nameOverlay = document.getElementById('nameInputOverlay');
 const finalScoreSpan = document.getElementById('finalScore');
+const finalBestSpan = document.getElementById('finalBest');
+const newRecordBadge = document.getElementById('newRecordBadge');
 const closeOverlayBtn = document.getElementById('closeOverlayBtn');
 const playBtn = document.getElementById('playBtn');
 const pauseBtn = document.getElementById('pauseBtn');
 const restartBtn = document.getElementById('restartBtn');
+const muteBtn = document.getElementById('muteBtn');
 const startScreenOverlay = document.getElementById('startScreenOverlay');
 const hudScore = document.getElementById('hudScore');
+const hudBest = document.getElementById('hudBest');
 const hudSpeed = document.getElementById('hudSpeed');
 const hudLanes = document.getElementById('hudLanes');
 const speedBarFill = document.getElementById('speedBarFill');
@@ -79,9 +103,13 @@ let heartImageLoaded = false;
 let carSprite = null;
 let beerSprite = null;
 let heartSprite = null;
+let coneSprite = null;
+let oilSprite = null;
+let shieldSprite = null;
 let roadTiles = [null, null, null];
 let signCache = { meters: -1, label: '', newStart: -1, w: 0, canvas: null };
 let pillCache = { meters: -1, label: '', w: 0, canvas: null };
+let speedCamCache = { limitKmh: -1, w: 0, canvas: null };
 let bannerCache = { text: '', color: '', canvas: null };
 
 function bakeSprite(img, w, h) {
@@ -93,10 +121,74 @@ function bakeSprite(img, w, h) {
     return off;
 }
 
+function bakeProceduralSprites() {
+    if (brewWidth <= 0 || heartSize <= 0) return;
+    // Traffic cone sprite
+    const cw = Math.max(16, Math.round(brewWidth * 1.1));
+    const ch = Math.max(18, Math.round(cw * 1.15));
+    const cc = document.createElement('canvas');
+    cc.width = cw;
+    cc.height = ch;
+    const cctx = cc.getContext('2d');
+    cctx.fillStyle = '#ea580c';
+    cctx.fillRect(1, ch - 4, cw - 2, 4);
+    cctx.fillStyle = '#f97316';
+    cctx.beginPath();
+    cctx.moveTo(cw * 0.36, 1);
+    cctx.lineTo(cw * 0.64, 1);
+    cctx.lineTo(cw * 0.88, ch - 4);
+    cctx.lineTo(cw * 0.12, ch - 4);
+    cctx.closePath();
+    cctx.fill();
+    cctx.fillStyle = '#f8fafc';
+    cctx.fillRect(cw * 0.25, ch * 0.42, cw * 0.5, Math.max(3, ch * 0.16));
+    coneSprite = cc;
+
+    // Oil slick puddle sprite
+    const ow = Math.max(24, Math.round(carWidth * 0.95));
+    const oh = Math.max(16, Math.round(ow * 0.62));
+    const oc = document.createElement('canvas');
+    oc.width = ow;
+    oc.height = oh;
+    const octx = oc.getContext('2d');
+    octx.fillStyle = '#090d16';
+    octx.beginPath();
+    octx.ellipse(ow / 2, oh / 2, ow * 0.46, oh * 0.42, 0.15, 0, Math.PI * 2);
+    octx.fill();
+    octx.strokeStyle = 'rgba(139, 92, 246, 0.65)';
+    octx.lineWidth = 2;
+    octx.beginPath();
+    octx.ellipse(ow * 0.45, oh * 0.45, ow * 0.26, oh * 0.18, -0.2, 0, Math.PI * 1.4);
+    octx.stroke();
+    oilSprite = oc;
+
+    // Shield pickup sprite
+    const ss = Math.max(20, Math.round(heartSize * 1.1));
+    const sc = document.createElement('canvas');
+    sc.width = ss;
+    sc.height = ss;
+    const sctx = sc.getContext('2d');
+    sctx.fillStyle = '#0ea5e9';
+    sctx.strokeStyle = '#e0f2fe';
+    sctx.lineWidth = 2;
+    sctx.beginPath();
+    sctx.moveTo(ss / 2, 2);
+    sctx.lineTo(ss - 3, ss * 0.26);
+    sctx.lineTo(ss - 4, ss * 0.64);
+    sctx.lineTo(ss / 2, ss - 2);
+    sctx.lineTo(4, ss * 0.64);
+    sctx.lineTo(3, ss * 0.26);
+    sctx.closePath();
+    sctx.fill();
+    sctx.stroke();
+    shieldSprite = sc;
+}
+
 function bakeAllSprites() {
     carSprite = bakeSprite(carImage, carWidth, carHeight);
     beerSprite = bakeSprite(beerImage, brewWidth, brewHeight);
     heartSprite = bakeSprite(heartImage, heartSize, heartSize);
+    bakeProceduralSprites();
 }
 
 function loadSprite(src, onLoad) {
@@ -148,11 +240,13 @@ function preloadWebAudio(entry) {
 }
 
 function unlockAudio() {
-    if (audioUnlocked) return;
-    audioUnlocked = true;
+    if (!audioCtx && AudioCtx) {
+        try { audioCtx = new AudioCtx(); } catch (_) {}
+    }
     if (audioCtx && audioCtx.state === 'suspended') {
         audioCtx.resume().catch(() => {});
     }
+    audioUnlocked = true;
 }
 
 const crashSound = loadSound('assets/audio/crash.mp3');
@@ -165,6 +259,7 @@ function stopSound(sound) {
 }
 
 function playSound(sound) {
+    if (muted) return;
     unlockAudio();
     if (sound.buffer && audioCtx) {
         try {
@@ -182,11 +277,42 @@ function playSound(sound) {
     sound.audio.play().catch(() => {});
 }
 
+function playTone(freqStart, freqEnd, duration = 0.12, type = 'triangle', gainVal = 0.12) {
+    if (muted || !AudioCtx) return;
+    unlockAudio();
+    if (!audioCtx) return;
+    try {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freqStart, now);
+        osc.frequency.exponentialRampToValueAtTime(Math.max(40, freqEnd), now + duration);
+        gain.gain.setValueAtTime(gainVal, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + duration);
+    } catch (_) {}
+}
+
+function toggleMute() {
+    muted = !muted;
+    muteBtn.blur();
+    muteBtn.innerHTML = muted ? '<i class="fas fa-volume-mute"></i>' : '<i class="fas fa-volume-up"></i>';
+    if (muted) {
+        for (const sound of [crashSound, gameOverSound, collectSound]) stopSound(sound);
+    }
+}
+
 function clearKeys() {
     keys.left = false;
     keys.right = false;
     keys.up = false;
     keys.down = false;
+    dragActive = false;
+    dragSteerDir = 0;
 }
 
 function activeCenterBounds(laneStart, margin) {
@@ -254,6 +380,7 @@ function resizeCanvas() {
 
     signCache.meters = -1;
     pillCache.meters = -1;
+    speedCamCache.w = 0;
     bannerCache.text = '';
     bakeAllSprites();
     bakeRoadTiles();
@@ -313,6 +440,30 @@ bindButtonAction(playBtn, startCountdown);
 bindButtonAction(pauseBtn, togglePause);
 bindButtonAction(restartBtn, returnToStartScreen);
 bindButtonAction(closeOverlayBtn, returnToStartScreen);
+muteBtn.addEventListener('click', toggleMute);
+
+canvas.addEventListener('touchstart', e => {
+    if (gameOver || paused || countdownActive || e.touches.length === 0) return;
+    e.preventDefault();
+    unlockAudio();
+    dragActive = true;
+    dragLastX = e.touches[0].clientX;
+    dragSteerDir = 0;
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+    if (!dragActive || gameOver || paused || countdownActive || e.touches.length === 0) return;
+    e.preventDefault();
+    const curX = e.touches[0].clientX;
+    const dx = curX - dragLastX;
+    dragLastX = curX;
+    const grip = slipTimer > 0 ? 0.55 : 1;
+    carOffsetX += dx * grip;
+    dragSteerDir = Math.abs(dx) > 1 ? Math.sign(dx) : dragSteerDir;
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => { dragActive = false; dragSteerDir = 0; });
+canvas.addEventListener('touchcancel', () => { dragActive = false; dragSteerDir = 0; });
 
 document.addEventListener('keydown', e => {
     const typing = ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
@@ -363,9 +514,35 @@ function bindMoveButton(btn, dir) {
 bindMoveButton(moveLeftBtn, 'left');
 bindMoveButton(moveRightBtn, 'right');
 
+function showBanner(text, color, ms = 1400) {
+    mergeBannerText = text;
+    mergeBannerColor = color;
+    mergeBannerTimer = ms;
+}
+
+function triggerFlash(color, alpha = 0.35) {
+    flashColor = color;
+    flashAlpha = alpha;
+}
+
+function syncHighScore(persist = false) {
+    let isNew = false;
+    if (score > highScore) {
+        highScore = score;
+        isNew = true;
+    }
+    if (persist) {
+        try { localStorage.setItem('brewBashHighScore', String(highScore)); } catch (_) {}
+    }
+    return isNew;
+}
+
 function showGameOverOverlay() {
     clearKeys();
+    const isNew = syncHighScore(true);
     finalScoreSpan.textContent = score;
+    finalBestSpan.textContent = highScore;
+    newRecordBadge.textContent = isNew && score > 0 ? 'NEW BEST!' : '';
     nameOverlay.style.display = 'flex';
     updateButtonStates();
 }
@@ -379,6 +556,20 @@ function updateButtonStates() {
 }
 
 function triggerCrash(damage = 25) {
+    if (hasShield) {
+        hasShield = false;
+        carBlinkRemaining = CAR_BLINK_DURATION;
+        shakeTimer = 110;
+        triggerFlash('#38bdf8', 0.3);
+        showBanner('SHIELD SAVED!', '#38bdf8', 1300);
+        playTone(620, 920, 0.14);
+        updateHUDDisplay();
+        return false;
+    }
+
+    combo = 1;
+    shakeTimer = 140;
+    triggerFlash('#ef4444', 0.36);
     health = Math.max(0, health - damage);
     if (health <= 0) {
         gameOver = true;
@@ -423,12 +614,21 @@ function spawnBrewWave(baseY) {
         }
         if (x === null) continue;
         placed.push(x);
-        const drift = Math.random() < 0.2 ? (Math.random() - 0.5) * laneWidth * 0.25 : 0;
+
+        const nearDiversion = diversion && Math.abs(baseY - diversion.y) < diversion.signLead * 0.8;
+        const r = Math.random();
+        let type = 'beer';
+        if (r < 0.2) type = 'cone';
+        else if (!nearDiversion && r < 0.32) type = 'oil';
+
+        const drift = type === 'beer' && Math.random() < 0.2 ? (Math.random() - 0.5) * laneWidth * 0.25 : 0;
         lampposts.push({
+            type,
             x,
             y: baseY + (Math.random() - 0.5) * brewHeight * 0.4,
             vx: drift,
-            speedFactor: 0.95 + Math.random() * 0.12,
+            speedFactor: type === 'oil' ? 1.0 : 0.95 + Math.random() * 0.12,
+            nearMiss: false,
             checked: false
         });
     }
@@ -489,16 +689,17 @@ function updateDiversion(deltaTime) {
     if (mergeBannerTimer > 0) mergeBannerTimer = Math.max(0, mergeBannerTimer - deltaTime);
 
     if (!diversion) {
+        if (speedTrap) return;
         diversionCooldown -= deltaTime;
         if (diversionCooldown <= 0) {
-            const candidates = [0, 1, 2].filter(s => s !== activeStart);
-            const newStart = candidates[Math.floor(Math.random() * candidates.length)];
-            const shift = Math.abs(newStart - activeStart);
-            const { signLead, taperH } = diversionMetrics(shift);
+            // Shift only to physically adjacent 2-lane corridors: 0 <-> 1 <-> 2
+            const dir = activeStart === 0 ? 1 : (activeStart === 2 ? -1 : (Math.random() < 0.5 ? -1 : 1));
+            const newStart = activeStart + dir;
+            const { signLead, taperH } = diversionMetrics(1);
             diversion = {
                 oldStart: activeStart,
                 newStart,
-                dir: Math.sign(newStart - activeStart),
+                dir,
                 y: -signLead - 40,
                 signLead,
                 taperH,
@@ -517,15 +718,14 @@ function updateDiversion(deltaTime) {
         const [newLeft, newRight] = activeCenterBounds(diversion.newStart, 0);
 
         if (carCenterX < newLeft || carCenterX > newRight) {
-            mergeBannerText = 'BARRICADE HIT! -25 HP';
-            mergeBannerColor = '#ef4444';
-            mergeBannerTimer = 1500;
+            showBanner('BARRICADE HIT! -25 HP', '#ef4444', 1500);
             if (triggerCrash(25)) return;
         } else {
-            score += 100;
-            mergeBannerText = '+100 SAFE MERGE!';
-            mergeBannerColor = '#22c55e';
-            mergeBannerTimer = 1500;
+            const pts = 100 * combo;
+            score += pts;
+            syncHighScore();
+            showBanner(`+${pts} SAFE MERGE!`, '#22c55e', 1400);
+            playTone(520, 780, 0.12);
         }
 
         activeStart = diversion.newStart;
@@ -537,7 +737,51 @@ function updateDiversion(deltaTime) {
 
     if (diversion.y > canvas.height + diversion.taperH + 40) {
         diversion = null;
-        diversionCooldown = 4500 + Math.random() * 8500;
+        diversionCooldown = 3800 + Math.random() * 6500;
+    }
+}
+
+function updateSpeedTrap(deltaTime) {
+    if (!speedTrap) {
+        if (diversion || gameSpeedMultiplier < 1.55) return;
+        speedTrapCooldown -= deltaTime;
+        if (speedTrapCooldown <= 0) {
+            const curKmh = gameSpeedMultiplier * 100;
+            const limits = [180, 200, 220, 240];
+            const fitting = limits.filter(l => l <= curKmh + 20 && l >= curKmh - 75);
+            const limitKmh = (fitting.length ? fitting : limits)[Math.floor(Math.random() * (fitting.length || limits.length))];
+            speedTrap = {
+                y: -140,
+                limitKmh,
+                resolved: false
+            };
+        }
+        return;
+    }
+
+    speedTrap.y += (gameSpeedMultiplier * baseObstacleSpeed / 1000) * deltaTime;
+
+    if (!speedTrap.resolved && speedTrap.y >= carY) {
+        speedTrap.resolved = true;
+        const curKmh = Math.round(gameSpeedMultiplier * 100);
+        if (curKmh <= speedTrap.limitKmh) {
+            const pts = 150 * combo;
+            score += pts;
+            syncHighScore();
+            showBanner(`+${pts} CAM PASS!`, '#22c55e', 1400);
+            playTone(660, 990, 0.13);
+        } else {
+            score = Math.max(0, score - 100);
+            triggerFlash('#ffffff', 0.45);
+            showBanner(`-100 OVER ${speedTrap.limitKmh}!`, '#facc15', 1500);
+            playTone(260, 150, 0.16, 'sawtooth', 0.14);
+        }
+        updateHUDDisplay();
+    }
+
+    if (speedTrap.y > canvas.height + 80) {
+        speedTrap = null;
+        speedTrapCooldown = 11000 + Math.random() * 9000;
     }
 }
 
@@ -571,15 +815,37 @@ function updateLampposts(deltaTime) {
             else if (l.x >= zRight) { l.x = zRight; l.vx = -Math.abs(l.vx); }
         }
 
-        if (!l.checked && carBlinkRemaining <= 0 && rectCircleColliding(l.x, l.y, brewRadius, carX, carY, carWidth, carHeight)) {
-            l.checked = true;
-            if (triggerCrash(25)) return;
+        if (!l.checked) {
+            if (l.type === 'oil') {
+                if (rectCircleColliding(l.x, l.y, brewRadius * 1.15, carX, carY, carWidth, carHeight)) {
+                    l.checked = true;
+                    slipTimer = 950;
+                    slipDir = Math.random() < 0.5 ? -1 : 1;
+                    showBanner('OIL SLIP!', '#a78bfa', 1000);
+                    playTone(210, 130, 0.14, 'sine', 0.12);
+                }
+            } else if (carBlinkRemaining <= 0 && rectCircleColliding(l.x, l.y, brewRadius, carX, carY, carWidth, carHeight)) {
+                l.checked = true;
+                if (triggerCrash(25)) return;
+            } else if (!l.nearMiss && rectCircleColliding(l.x, l.y, brewRadius + 14, carX, carY, carWidth, carHeight)) {
+                l.nearMiss = true;
+            }
         }
 
         if (l.y > canvas.height + brewHeight) {
             lampposts.splice(i, 1);
-            if (!l.checked && !gameOver) {
-                score += 50;
+            if (!l.checked && !gameOver && l.type !== 'oil') {
+                if (l.nearMiss) {
+                    combo = Math.min(4, combo + 1);
+                    const pts = 50 * combo;
+                    score += pts;
+                    syncHighScore();
+                    showBanner(`+${pts} CLOSE CALL x${combo}`, '#facc15', 1100);
+                    playTone(540 + combo * 60, 820 + combo * 60, 0.09);
+                } else {
+                    score += 50 * combo;
+                    syncHighScore();
+                }
                 updateHUDDisplay();
             }
         }
@@ -590,9 +856,13 @@ function updateHealthDrop(deltaTime) {
     if (!gameOver && (!healthDrop || !healthDrop.active)) {
         heartCooldown -= deltaTime;
         if (heartCooldown <= 0) {
-            if (health < 100) {
+            const needHeart = health < 100;
+            const needShield = !hasShield;
+            if (needHeart || needShield) {
+                const kind = (needShield && (!needHeart || Math.random() < 0.35)) ? 'shield' : 'heart';
                 const zoneStart = (diversion && -heartSize <= diversion.y) ? diversion.newStart : activeStart;
                 healthDrop = {
+                    kind,
                     x: randomZoneX(zoneStart, heartSize * 0.6),
                     y: -heartSize,
                     speedFactor: 0.85 + Math.random() * 0.25,
@@ -602,7 +872,7 @@ function updateHealthDrop(deltaTime) {
                 };
                 heartCooldown = (health <= 25 ? 4500 : 8000) + Math.random() * 6000;
             } else {
-                heartCooldown = 2000 + Math.random() * 2000;
+                heartCooldown = 2500 + Math.random() * 2000;
             }
         }
     }
@@ -623,9 +893,15 @@ function updateHealthDrop(deltaTime) {
         healthDrop.x + halfHeart >= carX &&
         healthDrop.x - halfHeart <= carX + carWidth
     ) {
-        health = Math.min(health + 25, 100);
+        if (healthDrop.kind === 'shield') {
+            hasShield = true;
+            showBanner('SHIELD READY!', '#38bdf8', 1300);
+            playTone(520, 880, 0.14);
+        } else {
+            health = Math.min(health + 25, 100);
+            playSound(collectSound);
+        }
         healthDrop.active = false;
-        playSound(collectSound);
         updateHUDDisplay();
     } else if (healthDrop.y > canvas.height + heartSize) {
         healthDrop.active = false;
@@ -896,9 +1172,58 @@ function drawRoad() {
     }
 }
 
+function drawSpeedTrap() {
+    if (!speedTrap) return;
+    const ty = Math.round(speedTrap.y);
+    if (ty < -80 || ty > canvas.height + 60) return;
+
+    // Dashed white radar strip across active lanes
+    const xStart = carBaseX + activeStart * laneWidth;
+    const bandW = laneWidth * 2;
+    ctx.fillStyle = speedTrap.resolved ? 'rgba(148, 163, 184, 0.5)' : '#f8fafc';
+    for (let x = xStart + 6; x < xStart + bandW - 8; x += 18) {
+        ctx.fillRect(x, ty - 2, 10, 4);
+    }
+
+    const plateW = Math.round(Math.min(roadWidth * 0.68, 220));
+    const plateH = 38;
+    if (speedCamCache.limitKmh !== speedTrap.limitKmh || speedCamCache.w !== plateW) {
+        let sc = speedCamCache.canvas;
+        if (!sc) {
+            sc = document.createElement('canvas');
+            speedCamCache.canvas = sc;
+        }
+        sc.width = plateW;
+        sc.height = plateH;
+        const sctx = sc.getContext('2d');
+        sctx.fillStyle = '#0f172a';
+        sctx.fillRect(0, 0, plateW, plateH);
+        sctx.strokeStyle = '#ef4444';
+        sctx.lineWidth = 3;
+        sctx.strokeRect(1.5, 1.5, plateW - 3, plateH - 3);
+        sctx.fillStyle = '#f8fafc';
+        sctx.font = '10px "Press Start 2P", monospace';
+        sctx.textAlign = 'center';
+        sctx.textBaseline = 'middle';
+        sctx.fillText(`CAM MAX ${speedTrap.limitKmh}`, plateW / 2, plateH / 2);
+        speedCamCache.limitKmh = speedTrap.limitKmh;
+        speedCamCache.w = plateW;
+    }
+
+    ctx.drawImage(speedCamCache.canvas, Math.round(centerX - plateW / 2), ty - plateH - 6);
+}
+
 function drawLampposts() {
     for (const l of lampposts) {
-        if (beerSprite) {
+        if (l.type === 'oil') {
+            if (oilSprite) {
+                ctx.drawImage(oilSprite, l.x - oilSprite.width / 2, l.y - oilSprite.height / 2);
+            }
+        } else if (l.type === 'cone') {
+            if (coneSprite) {
+                ctx.drawImage(coneSprite, l.x - coneSprite.width / 2, l.y - coneSprite.height / 2);
+            }
+        } else if (beerSprite) {
             ctx.drawImage(beerSprite, l.x - brewWidth / 2, l.y - brewHeight / 2);
         } else if (beerImageLoaded) {
             ctx.drawImage(beerImage, l.x - brewWidth / 2, l.y - brewHeight / 2, brewWidth, brewHeight);
@@ -913,7 +1238,9 @@ function drawLampposts() {
 
 function drawHealthDrop() {
     if (!healthDrop || !healthDrop.active) return;
-    if (heartSprite) {
+    if (healthDrop.kind === 'shield' && shieldSprite) {
+        ctx.drawImage(shieldSprite, healthDrop.x - shieldSprite.width / 2, healthDrop.y - shieldSprite.height / 2);
+    } else if (heartSprite) {
         ctx.drawImage(heartSprite, healthDrop.x - heartSize / 2, healthDrop.y - heartSize / 2);
     } else if (heartImageLoaded) {
         ctx.drawImage(heartImage, healthDrop.x - heartSize / 2, healthDrop.y - heartSize / 2, heartSize, heartSize);
@@ -930,6 +1257,32 @@ function drawCar() {
         return;
     }
     const x = carBaseX + carOffsetX;
+    const cx = x + carWidth / 2;
+    const cy = carY + carHeight / 2;
+
+    if (hasShield || Math.abs(carAngle) > 0.002) {
+        ctx.save();
+        ctx.translate(cx, cy);
+        if (carAngle) ctx.rotate(carAngle);
+        if (hasShield) {
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.85)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, carWidth * 0.68, carHeight * 0.56, 0, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        if (carSprite) {
+            ctx.drawImage(carSprite, -carWidth / 2, -carHeight / 2);
+        } else if (carImageLoaded) {
+            ctx.drawImage(carImage, -carWidth / 2, -carHeight / 2, carWidth, carHeight);
+        } else {
+            ctx.fillStyle = 'red';
+            ctx.fillRect(-carWidth / 2, -carHeight / 2, carWidth, carHeight);
+        }
+        ctx.restore();
+        return;
+    }
+
     if (carSprite) {
         ctx.drawImage(carSprite, x, carY);
     } else if (carImageLoaded) {
@@ -964,17 +1317,37 @@ function drawMergeBanner() {
 }
 
 function drawScene() {
+    const shaking = shakeTimer > 0;
+    if (shaking) {
+        ctx.save();
+        ctx.translate((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 8);
+    }
     drawRoad();
+    drawSpeedTrap();
     drawLampposts();
     drawHealthDrop();
     drawCar();
     drawMergeBanner();
+    if (shaking) ctx.restore();
+
+    if (flashAlpha > 0.01) {
+        ctx.save();
+        ctx.globalAlpha = flashAlpha;
+        ctx.fillStyle = flashColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
+    }
 }
 
 function updateHUDDisplay() {
-    if (score !== lastHudScore) {
+    if (score !== lastHudScore || combo !== lastHudCombo) {
         lastHudScore = score;
-        hudScore.textContent = score;
+        lastHudCombo = combo;
+        hudScore.textContent = combo > 1 ? `${score} x${combo}` : score;
+    }
+    if (highScore !== lastHudBest) {
+        lastHudBest = highScore;
+        hudBest.textContent = highScore;
     }
     const speedKmh = Math.round(gameSpeedMultiplier * 100);
     if (speedKmh !== lastHudSpeed) {
@@ -1008,9 +1381,25 @@ function updateHUDDisplay() {
 }
 
 function updateCar(deltaTime) {
-    const movementAmount = (baseCarMoveSpeed / 1000) * deltaTime;
-    if (keys.left) carOffsetX -= movementAmount;
-    if (keys.right) carOffsetX += movementAmount;
+    const dt = deltaTime / 1000;
+    const grip = slipTimer > 0 ? 0.55 : 1;
+    const movementAmount = baseCarMoveSpeed * dt * grip;
+    let steerDir = dragActive ? dragSteerDir : 0;
+    if (keys.left) {
+        carOffsetX -= movementAmount;
+        steerDir = -1;
+    }
+    if (keys.right) {
+        carOffsetX += movementAmount;
+        steerDir = 1;
+    }
+    if (slipTimer > 0) {
+        carOffsetX += slipDir * laneWidth * 0.35 * dt;
+    }
+
+    const targetAngle = steerDir * 0.085;
+    carAngle += (targetAngle - carAngle) * Math.min(1, dt * 14);
+    if (!dragActive) dragSteerDir = 0;
 
     const minX = activeStart * laneWidth + 4;
     const maxX = (activeStart + 2) * laneWidth - carWidth - 4;
@@ -1019,13 +1408,21 @@ function updateCar(deltaTime) {
 
 function resetGame() {
     score = 0;
+    combo = 1;
     health = 100;
+    hasShield = false;
+    slipTimer = 0;
+    shakeTimer = 0;
+    flashAlpha = 0;
+    carAngle = 0;
     gameOver = false;
     countdownActive = false;
     countdownStartTime = 0;
     activeStart = Math.floor(Math.random() * 3);
     diversion = null;
-    diversionCooldown = 3500 + Math.random() * 4500;
+    diversionCooldown = 3800 + Math.random() * 6500;
+    speedTrap = null;
+    speedTrapCooldown = 10000 + Math.random() * 7000;
     mergeBannerText = '';
     mergeBannerTimer = 0;
     lampposts = [];
@@ -1040,6 +1437,8 @@ function resetGame() {
     heartCooldown = 6000 + Math.random() * 6000;
     carBlinkRemaining = 0;
     lastHudScore = -1;
+    lastHudCombo = -1;
+    lastHudBest = -1;
     lastHudSpeed = -1;
     lastHudLanes = -1;
     lastHudHealth = -1;
@@ -1105,6 +1504,7 @@ if (document.fonts && document.fonts.ready) {
     document.fonts.ready.then(() => {
         signCache.meters = -1;
         pillCache.meters = -1;
+        speedCamCache.w = 0;
         bannerCache.text = '';
     });
 }
@@ -1127,9 +1527,10 @@ function animate(timestamp) {
     const deltaTime = Math.max(0, Math.min(timestamp - lastTimestamp, MAX_DELTA_TIME));
     lastTimestamp = timestamp;
 
-    if (carBlinkRemaining > 0) {
-        carBlinkRemaining = Math.max(0, carBlinkRemaining - deltaTime);
-    }
+    if (carBlinkRemaining > 0) carBlinkRemaining = Math.max(0, carBlinkRemaining - deltaTime);
+    if (slipTimer > 0) slipTimer = Math.max(0, slipTimer - deltaTime);
+    if (shakeTimer > 0) shakeTimer = Math.max(0, shakeTimer - deltaTime);
+    if (flashAlpha > 0) flashAlpha = Math.max(0, flashAlpha - deltaTime * 0.0018);
 
     updateSpeedControl(deltaTime);
     updateCar(deltaTime);
@@ -1138,6 +1539,7 @@ function animate(timestamp) {
         drawScene();
         return;
     }
+    updateSpeedTrap(deltaTime);
     updateLampposts(deltaTime);
     updateHealthDrop(deltaTime);
 

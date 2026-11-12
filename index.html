@@ -39,6 +39,10 @@
                     <span id="hudScore">0</span>
                 </div>
                 <div class="stats-item">
+                    <span>Best :</span>
+                    <span id="hudBest">0</span>
+                </div>
+                <div class="stats-item">
                     <span>Speed :</span>
                     <span id="hudSpeed">100 km/h</span>
                 </div>
@@ -64,6 +68,7 @@
                 <button id="playBtn" class="game-button" title="Play"><i class="fas fa-play"></i></button>
                 <button id="pauseBtn" class="game-button" disabled title="Pause"><i class="fas fa-pause"></i></button>
                 <button id="restartBtn" class="game-button" title="Restart"><i class="fas fa-redo"></i></button>
+                <button id="muteBtn" class="game-button" title="Toggle Sound"><i class="fas fa-volume-up"></i></button>
             </div>
 
             <div class="desktop-hint">
@@ -100,6 +105,7 @@
         <div class="overlay-content">
             <h2 style="color: red;">Game Over!</h2>
             <p>Your Score: <span id="finalScore" style="color: #38a169;">0</span></p>
+            <p>Best: <span id="finalBest" style="color: #facc15;">0</span> <span id="newRecordBadge" style="color: #22c55e;"></span></p>
             <p>Don't Drink and Drive!</p>
             <span style="font-weight: normal; font-size: 0.7rem; color: #a0aec0; text-align: center; margin-top: 10px;">Any Feedback? DM! </span>
             <br>
