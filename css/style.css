@@ -12,18 +12,18 @@ body {
     height: 100dvh;
     overflow: hidden;
     margin: 0;
-    padding: 6px;
+    padding: 3px;
     box-sizing: border-box;
 }
 .game-wrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 5px;
     background-color: #1e293b;
     border: 2px solid #334155;
-    padding: 10px;
-    border-radius: 16px;
+    padding: 6px;
+    border-radius: 12px;
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
     width: 100%;
     max-width: 480px;
@@ -39,7 +39,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 5px;
     width: 100%;
     flex: 1;
     min-width: 0;
@@ -71,7 +71,8 @@ canvas {
 .game-title {
     order: 1;
     flex-shrink: 0;
-    font-size: clamp(0.95rem, 3.5vw, 1.3rem);
+    font-size: 0.78rem;
+    line-height: 1.2;
     font-weight: normal;
     margin: 0;
     color: #facc15;
@@ -86,14 +87,17 @@ canvas {
     flex-shrink: 0;
     width: 100%;
     box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-    padding: 10px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 10px;
+    padding: 6px 8px;
     background-color: #0f172a;
     border: 1px solid #334155;
-    border-radius: 10px;
+    border-radius: 8px;
     contain: layout paint style;
+}
+.stats-item:last-child {
+    grid-column: 1 / -1;
 }
 .button-group {
     order: 3;
@@ -105,12 +109,15 @@ canvas {
 .site-footer {
     order: 5;
     flex-shrink: 0;
-    font-size: 0.55rem;
-    line-height: 1.6;
+    font-size: clamp(0.4rem, 1.9vw, 0.48rem);
+    line-height: 1.25;
     color: #64748b;
     text-align: center;
-    padding: 2px 0 0;
+    padding: 0;
     width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 @media (min-width: 768px) {
@@ -125,10 +132,12 @@ canvas {
         height: 100%;
         padding: 14px;
         gap: 14px;
+        border-radius: 16px;
     }
     .main-game-area {
         order: 0;
         height: 100%;
+        gap: 8px;
     }
     .mobile-controls {
         display: none !important;
@@ -151,13 +160,17 @@ canvas {
         order: 0;
     }
     .game-title {
+        font-size: clamp(0.95rem, 3.5vw, 1.3rem);
         padding-bottom: 14px;
         border-bottom: 2px solid #1e293b;
     }
     .stats-container {
+        display: flex;
+        flex-direction: column;
         background-color: #1e293b;
         gap: 14px;
         padding: 14px;
+        border-radius: 10px;
     }
     .desktop-hint {
         display: flex;
@@ -177,6 +190,9 @@ canvas {
         margin: 0;
     }
     .site-footer {
+        font-size: 0.55rem;
+        line-height: 1.6;
+        white-space: normal;
         padding-top: 8px;
         border-top: 1px solid #1e293b;
     }
@@ -301,6 +317,30 @@ canvas {
     background-color: #a0aec0;
     cursor: not-allowed;
     opacity: 0.7;
+}
+@media (max-width: 767px) {
+    .stats-item {
+        font-size: 0.56rem;
+        gap: 6px;
+    }
+    .progress-bar {
+        height: 7px;
+        min-width: 48px;
+    }
+    .game-button {
+        padding: 5px 8px;
+        border-radius: 6px;
+    }
+    .game-button i {
+        font-size: 0.95rem;
+    }
+    .mobile-controls {
+        gap: 8px;
+    }
+    .mobile-button {
+        padding: 10px;
+        font-size: 1.05rem;
+    }
 }
 .overlay {
     position: fixed;
