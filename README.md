@@ -27,13 +27,20 @@ BrewBash is a browser-based arcade game where you steer a car along a road, dodg
 
 ```
 .
-├── index.html              # Game markup, styles, and logic
-├── car.png                 # Player car image
-├── beer.png                # Obstacle image (beer bottle)
-├── heart.png               # Health pickup image
-├── crash.mp3               # Sound effect for collisions
-├── gameover.mp3            # Sound effect for game over
-└── health.mp3              # Sound effect for collecting hearts
+├── index.html                  # Game markup and HUD structure
+├── css/
+│   └── style.css               # Responsive layout, HUD, and overlay styles
+├── js/
+│   └── script.js               # 4-lane highway canvas game engine & controls
+└── assets/
+    ├── images/
+    │   ├── beer.png            # Obstacle image (beer bottle)
+    │   ├── car.png             # Player car image
+    │   └── heart.png           # Health pickup image
+    └── audio/
+        ├── crash.mp3           # Sound effect for collisions
+        ├── gameover.mp3        # Sound effect for game over
+        └── health.mp3          # Sound effect for collecting hearts
 ```
 
 ## 🛠️ Setup (for development)

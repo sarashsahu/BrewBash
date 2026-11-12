@@ -1,0 +1,389 @@
+/* Import the 'Press Start 2P' font for a video game feel */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+html, body {
+    height: 100%;
+}
+
+body {
+    font-family: 'Press Start 2P', cursive;
+    background: radial-gradient(circle at top, #1e293b 0%, #0f172a 75%);
+    color: #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100dvh;
+    overflow: hidden;
+    margin: 0;
+    padding: 6px;
+    box-sizing: border-box;
+}
+.game-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    background-color: #1e293b;
+    border: 2px solid #334155;
+    padding: 10px;
+    border-radius: 16px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+    width: 100%;
+    max-width: 480px;
+    flex: 1;
+    min-height: 0;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 10;
+}
+
+.main-game-area {
+    order: 4;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+}
+
+.canvas-frame {
+    flex: 1;
+    min-height: 160px;
+    width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid #334155;
+    background-color: #0b1120;
+    box-sizing: border-box;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.control-panel {
+    display: contents;
+}
+
+.game-title {
+    order: 1;
+    flex-shrink: 0;
+    font-size: clamp(0.95rem, 3.5vw, 1.3rem);
+    font-weight: normal;
+    margin: 0;
+    color: #facc15;
+    text-shadow: 0 2px 10px rgba(250, 204, 21, 0.25);
+    letter-spacing: 1px;
+    text-align: center;
+    width: 100%;
+}
+
+.stats-container {
+    order: 2;
+    flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 10px;
+    background-color: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 10px;
+}
+.button-group {
+    order: 3;
+    flex-shrink: 0;
+}
+.desktop-hint {
+    display: none;
+}
+.site-footer {
+    order: 5;
+    flex-shrink: 0;
+    font-size: 0.55rem;
+    line-height: 1.6;
+    color: #64748b;
+    text-align: center;
+    padding: 2px 0 0;
+    width: 100%;
+}
+
+@media (min-width: 768px) {
+    body {
+        padding: 8px;
+    }
+    .game-wrapper {
+        flex-direction: row;
+        align-items: stretch;
+        width: min(98vw, 1500px);
+        max-width: none;
+        height: 100%;
+        padding: 14px;
+        gap: 14px;
+    }
+    .main-game-area {
+        order: 0;
+        height: 100%;
+    }
+    .mobile-controls {
+        display: none !important;
+    }
+    .control-panel {
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+        width: 300px;
+        height: 100%;
+        flex-shrink: 0;
+        background-color: #0f172a;
+        border: 1px solid #334155;
+        padding: 18px;
+        border-radius: 12px;
+        gap: 16px;
+        overflow-y: auto;
+    }
+    .game-title, .stats-container, .button-group, .site-footer {
+        order: 0;
+    }
+    .game-title {
+        padding-bottom: 14px;
+        border-bottom: 2px solid #1e293b;
+    }
+    .stats-container {
+        background-color: #1e293b;
+        gap: 14px;
+        padding: 14px;
+    }
+    .desktop-hint {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: auto;
+        padding: 14px;
+        background-color: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 10px;
+        font-size: 0.62rem;
+        color: #94a3b8;
+        text-align: center;
+        line-height: 1.7;
+    }
+    .desktop-hint p {
+        margin: 0;
+    }
+    .site-footer {
+        padding-top: 8px;
+        border-top: 1px solid #1e293b;
+    }
+    .key-row {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+    .keycap {
+        background-color: #0f172a;
+        color: #e2e8f0;
+        border: 1px solid #475569;
+        border-bottom-width: 3px;
+        border-radius: 5px;
+        padding: 4px 7px;
+        font-size: 0.6rem;
+    }
+}
+.stats-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.68rem;
+}
+.stats-item span:first-child {
+    font-weight: normal;
+    color: #cbd5e0;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.progress-bar {
+    background-color: #6a748c;
+    border-radius: 5px;
+    height: 10px;
+    flex: 1;
+    max-width: 52%;
+    min-width: 72px;
+    overflow: hidden;
+}
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    background-color: lightgreen;
+    border-radius: 5px;
+    transition: width 0.2s ease-in-out, background-color 0.2s ease-in-out;
+}
+.button-group {
+    display: flex; /* Changed to flex to make buttons side-by-side */
+    flex-direction: row; /* Ensure row direction for buttons */
+    justify-content: space-around; /* Distribute space around items */
+    gap: 5px; /* Smaller gap between buttons */
+    width: 100%;
+    margin-top: 0px; /* Add some space above the button group */
+}
+.game-button {
+    background-color: #4299e1;
+    color: white;
+    padding: 8px 10px; /* Smaller padding */
+    border-radius: 8px;
+    font-size: 0.7rem; /* Smaller font size for icons/text */
+    font-weight: normal;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    border: none;
+    flex: 1; /* Make buttons take equal space */
+    display: flex; /* Use flex to center icon */
+    justify-content: center;
+    align-items: center;
+    touch-action: manipulation;
+}
+.game-button i {
+    font-size: 1.2rem; /* Size for icons */
+}
+.game-button:hover:not(:disabled) {
+    background-color: #3182ce;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
+}
+.game-button:disabled {
+    background-color: #a0aec0;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+.mobile-controls {
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+    gap: 10px;
+    margin-top: 0px; /* Reduced space between canvas and mobile controls */
+}
+.mobile-button {
+    background-color: #4299e1;
+    color: white;
+    padding: 14px 10px;
+    border-radius: 8px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    border: none;
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.mobile-button:hover:not(:disabled) {
+    background-color: #dd6b20;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
+}
+.mobile-button:disabled {
+    background-color: #a0aec0;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.overlay-content {
+    background-color: #2d3748;
+    padding: 30px;
+    border-radius: 15px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    max-width: 90%; /* Ensure content doesn't stretch too wide */
+    width: 400px; /* Provide a sensible max width */
+}
+.overlay-content h2 {
+    font-size: clamp(1.2rem, 4.5vw, 1.6rem);
+    color: #e2e8f0;
+    margin-bottom: 15px;
+}
+.overlay-content p {
+    font-size: clamp(0.75rem, 2.8vw, 0.9rem);
+    color: #cbd5e0;
+    margin-bottom: 20px;
+}
+.overlay-content button {
+    background-color: #48bb78;
+    color: white;
+    padding: 12px 25px;
+    border-radius: 8px;
+    font-size: 0.9rem; /* Adjusted for pixel font readability */
+    font-weight: normal;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+    border: none;
+    touch-action: manipulation;
+}
+.overlay-content button:hover {
+    background-color: #38a169;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* New styles for the start screen overlay */
+#startScreenOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    color: white;
+    font-size: 2rem;
+    text-align: center;
+    padding: 20px;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+#startScreenOverlay h1 {
+    font-size: clamp(1.5rem, 6vw, 2.5rem);
+    margin-bottom: 20px;
+    color: #4299e1;
+    animation: pulse 1.5s infinite alternate;
+}
+
+#startScreenOverlay p {
+    font-size: clamp(0.75rem, 3vw, 1.1rem);
+    margin-top: 10px;
+    color: #a0aec0;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.05); }
+}
