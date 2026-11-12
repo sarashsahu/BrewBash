@@ -4,7 +4,8 @@ const ctx = canvas.getContext('2d', { alpha: false });
 
 const CAR_BLINK_DURATION = 1500;
 const CAR_BLINK_INTERVAL = 100;
-const SPEED_CYCLE = [5.0, 4.5, 4.0, 4.5];
+const MIN_SPEED = 0.8;
+const MAX_SPEED = 4.0;
 const ROAD_TILE_H = 360;
 
 let carWidth = 44;
@@ -36,6 +37,9 @@ let score = 0;
 let health = 100;
 let gameOver = false;
 let lampposts = [];
+let autoSpeed = 1.0;
+let targetAutoSpeed = 1.0;
+let speedShiftTimer = 2500;
 let gameSpeedMultiplier = 1;
 let manualSpeedOffset = 0;
 let lastHudScore = -1;
@@ -440,17 +444,40 @@ function rectCircleColliding(cx, cy, r, rx, ry, rw, rh) {
     return dx2 * dx2 + dy2 * dy2 <= r * r;
 }
 
+function pickNextSpeedTarget() {
+    const floor = Math.min(2.4, 1.0 + (score / 6000) * 1.4);
+    const ceil = Math.min(MAX_SPEED, 1.6 + (score / 4500) * 2.4);
+    const mag = 0.15 + Math.random() * 0.4;
+    let dir;
+    if (autoSpeed >= ceil - 0.08) dir = -1;
+    else if (autoSpeed <= floor + 0.08) dir = 1;
+    else dir = Math.random() < (score < 4500 ? 0.58 : 0.5) ? 1 : -1;
+
+    targetAutoSpeed = Math.max(floor, Math.min(ceil, autoSpeed + dir * mag));
+    speedShiftTimer = 1800 + Math.random() * 2400;
+}
+
 function updateSpeedControl(deltaTime) {
     const dt = deltaTime / 1000;
+    speedShiftTimer -= deltaTime;
+    if (speedShiftTimer <= 0) pickNextSpeedTarget();
+
+    if (autoSpeed !== targetAutoSpeed) {
+        const autoStep = 0.28 * dt;
+        const diff = targetAutoSpeed - autoSpeed;
+        autoSpeed = Math.abs(diff) <= autoStep ? targetAutoSpeed : autoSpeed + Math.sign(diff) * autoStep;
+    }
+
     if (keys.up) {
         manualSpeedOffset = Math.min(0.8, manualSpeedOffset + 1.8 * dt);
     } else if (keys.down) {
-        manualSpeedOffset = Math.max(-0.5, manualSpeedOffset - 2.2 * dt);
+        manualSpeedOffset = Math.max(-0.6, manualSpeedOffset - 2.2 * dt);
     } else if (manualSpeedOffset !== 0) {
         const step = 1.6 * dt;
         manualSpeedOffset = Math.abs(manualSpeedOffset) <= step ? 0 : manualSpeedOffset - Math.sign(manualSpeedOffset) * step;
     }
-    const nextSpeed = Math.max(0.6, Math.min(5.5, getSpeedForScore(score) + manualSpeedOffset));
+
+    const nextSpeed = Math.max(MIN_SPEED, Math.min(MAX_SPEED, autoSpeed + manualSpeedOffset));
     const rounded = Math.round(nextSpeed * 100);
     gameSpeedMultiplier = nextSpeed;
     if (rounded !== lastHudSpeed) {
@@ -603,14 +630,6 @@ function updateHealthDrop(deltaTime) {
     } else if (healthDrop.y > canvas.height + heartSize) {
         healthDrop.active = false;
     }
-}
-
-function getSpeedForScore(currentScore) {
-    if (currentScore < 8000) {
-        return 1.0 + Math.floor(currentScore / 500) * 0.25;
-    }
-    const step = Math.floor((currentScore - 8000) / 500);
-    return SPEED_CYCLE[step % SPEED_CYCLE.length];
 }
 
 function drawBarricadeBox(targetCtx, bx, by, bw, bh) {
@@ -961,11 +980,11 @@ function updateHUDDisplay() {
     if (speedKmh !== lastHudSpeed) {
         lastHudSpeed = speedKmh;
         hudSpeed.textContent = `${speedKmh} km/h`;
-        speedBarFill.style.transform = `scaleX(${Math.min(1, gameSpeedMultiplier / 5.5).toFixed(4)})`;
+        speedBarFill.style.transform = `scaleX(${Math.min(1, gameSpeedMultiplier / MAX_SPEED).toFixed(4)})`;
         let speedBarColor = '#38bdf8';
-        if (gameSpeedMultiplier >= 4.5) speedBarColor = '#ef4444';
-        else if (gameSpeedMultiplier >= 3.0) speedBarColor = '#f97316';
-        else if (gameSpeedMultiplier >= 2.0) speedBarColor = '#facc15';
+        if (gameSpeedMultiplier >= 3.4) speedBarColor = '#ef4444';
+        else if (gameSpeedMultiplier >= 2.5) speedBarColor = '#f97316';
+        else if (gameSpeedMultiplier >= 1.7) speedBarColor = '#facc15';
         if (speedBarColor !== lastSpeedColor) {
             lastSpeedColor = speedBarColor;
             speedBarFill.style.backgroundColor = speedBarColor;
@@ -1010,8 +1029,11 @@ function resetGame() {
     mergeBannerText = '';
     mergeBannerTimer = 0;
     lampposts = [];
+    autoSpeed = 1.0;
+    targetAutoSpeed = 1.15 + Math.random() * 0.25;
+    speedShiftTimer = 1800 + Math.random() * 1800;
     manualSpeedOffset = 0;
-    gameSpeedMultiplier = getSpeedForScore(0);
+    gameSpeedMultiplier = autoSpeed;
     carOffsetX = activeStart * laneWidth + laneWidth - carWidth / 2;
     worldScrollY = 0;
     healthDrop = null;
