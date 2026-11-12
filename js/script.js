@@ -100,9 +100,11 @@ const moveRightBtn = document.getElementById('moveRightBtn');
 let carImageLoaded = false;
 let beerImageLoaded = false;
 let heartImageLoaded = false;
+let lemonImageLoaded = false;
 let carSprite = null;
 let beerSprite = null;
 let heartSprite = null;
+let lemonSprite = null;
 let coneSprite = null;
 let oilSprite = null;
 let shieldSprite = null;
@@ -185,9 +187,13 @@ function bakeProceduralSprites() {
 }
 
 function bakeAllSprites() {
+    if (beerImage.complete && beerImage.naturalWidth > 0 && brewWidth > 0) {
+        brewHeight = Math.round(brewWidth * (beerImage.naturalHeight / beerImage.naturalWidth));
+    }
     carSprite = bakeSprite(carImage, carWidth, carHeight);
     beerSprite = bakeSprite(beerImage, brewWidth, brewHeight);
-    heartSprite = bakeSprite(heartImage, heartSize, heartSize);
+    heartSprite = bakeSprite(heartImage, Math.round(heartSize * 1.15), Math.round(heartSize * 0.99));
+    lemonSprite = bakeSprite(lemonImage, Math.round(heartSize * 1.25), Math.round(heartSize * 1.01));
     bakeProceduralSprites();
 }
 
@@ -209,6 +215,7 @@ function loadSprite(src, onLoad) {
 const carImage = loadSprite('assets/images/car.png', loaded => { carImageLoaded = loaded; });
 const beerImage = loadSprite('assets/images/beer.png', loaded => { beerImageLoaded = loaded; });
 const heartImage = loadSprite('assets/images/heart.png', loaded => { heartImageLoaded = loaded; });
+const lemonImage = loadSprite('assets/images/lemon.png', loaded => { lemonImageLoaded = loaded; });
 
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
@@ -355,10 +362,11 @@ function resizeCanvas() {
 
     const scale = Math.max(0.55, Math.min(1.55, Math.min(canvas.width / 560, canvas.height / 560)));
     carWidth = Math.max(22, Math.min(Math.round(44 * scale), Math.floor(laneWidth * 0.44)));
-    carHeight = Math.round(carWidth * 2.15);
-    brewWidth = Math.max(14, Math.min(Math.round(22 * scale), Math.floor(laneWidth * 0.28)));
-    brewHeight = Math.round(brewWidth * 1.5);
-    brewRadius = brewWidth * 0.45;
+    carHeight = Math.round(carWidth * 2.0);
+    brewWidth = Math.max(14, Math.min(Math.round(18 * scale), Math.floor(laneWidth * 0.24)));
+    const beerRatio = (beerImage.complete && beerImage.naturalWidth > 0) ? (beerImage.naturalHeight / beerImage.naturalWidth) : (280 / 82);
+    brewHeight = Math.round(brewWidth * beerRatio);
+    brewRadius = brewWidth * 0.6;
     heartSize = Math.max(16, Math.min(Math.round(24 * scale), Math.floor(laneWidth * 0.3)));
 
     maxOffset = Math.max(0, roadWidth - carWidth);
@@ -858,22 +866,20 @@ function updateHealthDrop(deltaTime) {
         if (heartCooldown <= 0) {
             const needHeart = health < 100;
             const needShield = !hasShield;
-            if (needHeart || needShield) {
-                const kind = (needShield && (!needHeart || Math.random() < 0.35)) ? 'shield' : 'heart';
-                const zoneStart = (diversion && -heartSize <= diversion.y) ? diversion.newStart : activeStart;
-                healthDrop = {
-                    kind,
-                    x: randomZoneX(zoneStart, heartSize * 0.6),
-                    y: -heartSize,
-                    speedFactor: 0.85 + Math.random() * 0.25,
-                    swayPhase: Math.random() * Math.PI * 2,
-                    swayAmp: Math.random() * 20 + 12,
-                    active: true
-                };
-                heartCooldown = (health <= 25 ? 4500 : 8000) + Math.random() * 6000;
-            } else {
-                heartCooldown = 2500 + Math.random() * 2000;
-            }
+            let kind = 'lemon';
+            if (needHeart && Math.random() < 0.48) kind = 'heart';
+            else if (needShield && Math.random() < 0.45) kind = 'shield';
+            const zoneStart = (diversion && -heartSize <= diversion.y) ? diversion.newStart : activeStart;
+            healthDrop = {
+                kind,
+                x: randomZoneX(zoneStart, heartSize * 0.65),
+                y: -heartSize,
+                speedFactor: 0.85 + Math.random() * 0.25,
+                swayPhase: Math.random() * Math.PI * 2,
+                swayAmp: Math.random() * 20 + 12,
+                active: true
+            };
+            heartCooldown = (health <= 25 ? 4500 : 7500) + Math.random() * 5500;
         }
     }
 
@@ -883,7 +889,7 @@ function updateHealthDrop(deltaTime) {
     healthDrop.y += step;
     healthDrop.swayPhase += deltaTime * 0.004;
     const zoneStart = (diversion && healthDrop.y <= diversion.y) ? diversion.newStart : activeStart;
-    healthDrop.x = clampInZone(healthDrop.x + Math.sin(healthDrop.swayPhase) * healthDrop.swayAmp * (deltaTime / 1000), zoneStart, heartSize * 0.6);
+    healthDrop.x = clampInZone(healthDrop.x + Math.sin(healthDrop.swayPhase) * healthDrop.swayAmp * (deltaTime / 1000), zoneStart, heartSize * 0.65);
 
     const halfHeart = heartSize / 2;
     const carX = carBaseX + carOffsetX;
@@ -897,6 +903,14 @@ function updateHealthDrop(deltaTime) {
             hasShield = true;
             showBanner('SHIELD READY!', '#38bdf8', 1300);
             playTone(520, 880, 0.14);
+        } else if (healthDrop.kind === 'lemon') {
+            slipTimer = 0;
+            health = Math.min(health + 10, 100);
+            const pts = 100 * combo;
+            score += pts;
+            syncHighScore();
+            showBanner(`+${pts} LEMON FRESH!`, '#facc15', 1300);
+            playTone(720, 1180, 0.14);
         } else {
             health = Math.min(health + 25, 100);
             playSound(collectSound);
@@ -1224,7 +1238,7 @@ function drawLampposts() {
                 ctx.drawImage(coneSprite, l.x - coneSprite.width / 2, l.y - coneSprite.height / 2);
             }
         } else if (beerSprite) {
-            ctx.drawImage(beerSprite, l.x - brewWidth / 2, l.y - brewHeight / 2);
+            ctx.drawImage(beerSprite, l.x - beerSprite.width / 2, l.y - beerSprite.height / 2);
         } else if (beerImageLoaded) {
             ctx.drawImage(beerImage, l.x - brewWidth / 2, l.y - brewHeight / 2, brewWidth, brewHeight);
         } else {
@@ -1240,12 +1254,16 @@ function drawHealthDrop() {
     if (!healthDrop || !healthDrop.active) return;
     if (healthDrop.kind === 'shield' && shieldSprite) {
         ctx.drawImage(shieldSprite, healthDrop.x - shieldSprite.width / 2, healthDrop.y - shieldSprite.height / 2);
+    } else if (healthDrop.kind === 'lemon' && lemonSprite) {
+        ctx.drawImage(lemonSprite, healthDrop.x - lemonSprite.width / 2, healthDrop.y - lemonSprite.height / 2);
+    } else if (healthDrop.kind === 'lemon' && lemonImageLoaded) {
+        ctx.drawImage(lemonImage, healthDrop.x - heartSize / 2, healthDrop.y - heartSize / 2, heartSize, heartSize);
     } else if (heartSprite) {
-        ctx.drawImage(heartSprite, healthDrop.x - heartSize / 2, healthDrop.y - heartSize / 2);
+        ctx.drawImage(heartSprite, healthDrop.x - heartSprite.width / 2, healthDrop.y - heartSprite.height / 2);
     } else if (heartImageLoaded) {
         ctx.drawImage(heartImage, healthDrop.x - heartSize / 2, healthDrop.y - heartSize / 2, heartSize, heartSize);
     } else {
-        ctx.fillStyle = '#ef4444';
+        ctx.fillStyle = healthDrop.kind === 'lemon' ? '#facc15' : '#ef4444';
         ctx.beginPath();
         ctx.arc(healthDrop.x, healthDrop.y, heartSize * 0.4, 0, Math.PI * 2);
         ctx.fill();
