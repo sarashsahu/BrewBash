@@ -76,8 +76,8 @@ let carSprite = null;
 let beerSprite = null;
 let heartSprite = null;
 let roadTiles = [null, null, null];
-let signCache = { meters: -1, dir: 0, newStart: -1, w: 0, canvas: null };
-let pillCache = { meters: -1, dir: 0, w: 0, canvas: null };
+let signCache = { meters: -1, label: '', newStart: -1, w: 0, canvas: null };
+let pillCache = { meters: -1, label: '', w: 0, canvas: null };
 let bannerCache = { text: '', color: '', canvas: null };
 
 function bakeSprite(img, w, h) {
@@ -196,6 +196,18 @@ function clampInZone(x, laneStart, margin) {
     return Math.max(left, Math.min(right, x));
 }
 
+function diversionMetrics(shift) {
+    const signLead = Math.max(220, canvas.height * (shift > 1 ? 0.5 : 0.42));
+    const taperH = Math.max(68, Math.min(130, laneWidth * (shift > 1 ? 1.15 : 0.85)));
+    return { signLead, taperH };
+}
+
+function diversionLabel(d) {
+    const shift = Math.abs(d.newStart - d.oldStart);
+    if (d.dir > 0) return shift > 1 ? 'HARD RIGHT >>' : 'TAKE RIGHT >>';
+    return shift > 1 ? '<< HARD LEFT' : '<< TAKE LEFT';
+}
+
 function resizeCanvas() {
     const newW = canvasFrame.clientWidth || 300;
     const newH = canvasFrame.clientHeight || 400;
@@ -211,13 +223,13 @@ function resizeCanvas() {
     centerX = canvas.width / 2;
     carBaseX = centerX - roadWidth / 2;
 
-    const scale = Math.max(0.85, Math.min(1.55, Math.min(canvas.width / 460, canvas.height / 540)));
-    carWidth = Math.min(Math.round(44 * scale), Math.max(26, Math.floor(laneWidth * 0.62)));
+    const scale = Math.max(0.55, Math.min(1.55, Math.min(canvas.width / 560, canvas.height / 560)));
+    carWidth = Math.max(22, Math.min(Math.round(44 * scale), Math.floor(laneWidth * 0.44)));
     carHeight = Math.round(carWidth * 2.15);
-    brewWidth = Math.min(Math.round(22 * scale), Math.max(16, Math.floor(laneWidth * 0.34)));
+    brewWidth = Math.max(14, Math.min(Math.round(22 * scale), Math.floor(laneWidth * 0.28)));
     brewHeight = Math.round(brewWidth * 1.5);
     brewRadius = brewWidth * 0.45;
-    heartSize = Math.min(Math.round(24 * scale), Math.max(18, Math.floor(laneWidth * 0.36)));
+    heartSize = Math.max(16, Math.min(Math.round(24 * scale), Math.floor(laneWidth * 0.3)));
 
     maxOffset = Math.max(0, roadWidth - carWidth);
     carY = canvas.height - carHeight - Math.round(18 * scale);
@@ -226,12 +238,13 @@ function resizeCanvas() {
         Math.min((activeStart + 2) * laneWidth - carWidth - 4, ratio * maxOffset)
     );
 
-    baseCarMoveSpeed = Math.max(240, laneWidth * 2.4);
+    baseCarMoveSpeed = Math.max(220, laneWidth * 2.4);
     baseObstacleSpeed = Math.max(190, Math.min(270, canvas.height * 0.35));
 
     if (diversion) {
-        diversion.signLead = Math.max(220, canvas.height * 0.42);
-        diversion.taperH = Math.max(68, Math.min(120, laneWidth * 0.85));
+        const m = diversionMetrics(Math.abs(diversion.newStart - diversion.oldStart));
+        diversion.signLead = m.signLead;
+        diversion.taperH = m.taperH;
         diversion.totalDist = carY + diversion.signLead;
     }
 
@@ -451,13 +464,14 @@ function updateDiversion(deltaTime) {
     if (!diversion) {
         diversionCooldown -= deltaTime;
         if (diversionCooldown <= 0) {
-            const dir = activeStart === 0 ? 1 : (activeStart === 2 ? -1 : (Math.random() < 0.5 ? -1 : 1));
-            const signLead = Math.max(220, canvas.height * 0.42);
-            const taperH = Math.max(68, Math.min(120, laneWidth * 0.85));
+            const candidates = [0, 1, 2].filter(s => s !== activeStart);
+            const newStart = candidates[Math.floor(Math.random() * candidates.length)];
+            const shift = Math.abs(newStart - activeStart);
+            const { signLead, taperH } = diversionMetrics(shift);
             diversion = {
                 oldStart: activeStart,
-                newStart: activeStart + dir,
-                dir,
+                newStart,
+                dir: Math.sign(newStart - activeStart),
                 y: -signLead - 40,
                 signLead,
                 taperH,
@@ -496,7 +510,7 @@ function updateDiversion(deltaTime) {
 
     if (diversion.y > canvas.height + diversion.taperH + 40) {
         diversion = null;
-        diversionCooldown = 8000 + Math.random() * 6000;
+        diversionCooldown = 4500 + Math.random() * 8500;
     }
 }
 
@@ -724,7 +738,8 @@ function drawSignBoard(d, meters) {
     ctx.fillStyle = '#475569';
     ctx.fillRect(carBaseX, signY - 3, roadWidth, 6);
 
-    if (signCache.meters !== meters || signCache.dir !== d.dir || signCache.newStart !== d.newStart || signCache.w !== signW) {
+    const label = diversionLabel(d);
+    if (signCache.meters !== meters || signCache.label !== label || signCache.newStart !== d.newStart || signCache.w !== signW) {
         let sc = signCache.canvas;
         if (!sc) {
             sc = document.createElement('canvas');
@@ -740,7 +755,6 @@ function drawSignBoard(d, meters) {
         sctx.lineWidth = 3;
         sctx.strokeRect(1.5, 1.5, signW - 3, signH - 3);
 
-        const dirText = d.dir > 0 ? 'TAKE RIGHT >>' : '<< TAKE LEFT';
         const fontPx = Math.max(9, Math.min(12, Math.floor(signW / 29)));
         sctx.textAlign = 'left';
         sctx.textBaseline = 'middle';
@@ -748,7 +762,7 @@ function drawSignBoard(d, meters) {
         sctx.fillStyle = '#facc15';
         sctx.fillText(`${meters}m ROAD CLOSED`, 12, 18);
         sctx.fillStyle = '#ffffff';
-        sctx.fillText(dirText, 12, 39);
+        sctx.fillText(label, 12, 39);
 
         const boxW = 14;
         const boxGap = 3;
@@ -763,7 +777,7 @@ function drawSignBoard(d, meters) {
         }
 
         signCache.meters = meters;
-        signCache.dir = d.dir;
+        signCache.label = label;
         signCache.newStart = d.newStart;
         signCache.w = signW;
     }
@@ -774,7 +788,8 @@ function drawSignBoard(d, meters) {
 function drawWarningPill(d, meters) {
     const pillW = Math.round(Math.min(canvas.width - 24, 300));
     const pillH = 28;
-    if (pillCache.meters !== meters || pillCache.dir !== d.dir || pillCache.w !== pillW) {
+    const label = diversionLabel(d);
+    if (pillCache.meters !== meters || pillCache.label !== label || pillCache.w !== pillW) {
         let pc = pillCache.canvas;
         if (!pc) {
             pc = document.createElement('canvas');
@@ -793,10 +808,10 @@ function drawWarningPill(d, meters) {
         pctx.font = '10px "Press Start 2P", monospace';
         pctx.textAlign = 'center';
         pctx.textBaseline = 'middle';
-        pctx.fillText(`${meters}m - ${d.dir > 0 ? 'TAKE RIGHT >>' : '<< TAKE LEFT'}`, pillW / 2, pillH / 2);
+        pctx.fillText(`${meters}m - ${label}`, pillW / 2, pillH / 2);
 
         pillCache.meters = meters;
-        pillCache.dir = d.dir;
+        pillCache.label = label;
         pillCache.w = pillW;
     }
     ctx.drawImage(pillCache.canvas, Math.round(centerX - pillW / 2), 10);
@@ -807,9 +822,9 @@ function drawDiversionCut(d) {
     const tH = d.taperH;
     if (cutY + tH < -20 || cutY > canvas.height + 20) return;
 
-    const closingLane = d.dir > 0 ? d.oldStart : d.oldStart + 1;
-    const xBottom = d.dir > 0 ? carBaseX + closingLane * laneWidth : carBaseX + (closingLane + 1) * laneWidth;
-    const xTop = d.dir > 0 ? carBaseX + (closingLane + 1) * laneWidth : carBaseX + closingLane * laneWidth;
+    const shift = Math.abs(d.newStart - d.oldStart);
+    const xBottom = d.dir > 0 ? carBaseX + d.oldStart * laneWidth : carBaseX + (d.oldStart + 2) * laneWidth;
+    const xTop = d.dir > 0 ? carBaseX + d.newStart * laneWidth : carBaseX + (d.newStart + 2) * laneWidth;
 
     ctx.strokeStyle = '#f97316';
     ctx.lineWidth = 8;
@@ -819,8 +834,9 @@ function drawDiversionCut(d) {
     ctx.stroke();
 
     const blink = Math.floor(worldScrollY / 20) % 2 === 0;
-    for (let i = 0; i <= 4; i++) {
-        const t = i / 4;
+    const steps = shift > 1 ? 6 : 4;
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
         const cx = xBottom + (xTop - xBottom) * t;
         const cy = cutY + tH * (1 - t);
         ctx.fillStyle = '#f97316';
@@ -834,8 +850,11 @@ function drawDiversionCut(d) {
     }
 
     const barW = laneWidth * 0.78;
-    const barX = carBaseX + closingLane * laneWidth + (laneWidth - barW) / 2;
-    drawBarricadeBox(ctx, barX, cutY + tH * 0.45, barW, 13);
+    for (let lane = d.oldStart; lane <= d.oldStart + 1; lane++) {
+        if (lane >= d.newStart && lane <= d.newStart + 1) continue;
+        const barX = carBaseX + lane * laneWidth + (laneWidth - barW) / 2;
+        drawBarricadeBox(ctx, barX, cutY + tH * 0.45, barW, 13);
+    }
 }
 
 function drawRoad() {
@@ -985,9 +1004,9 @@ function resetGame() {
     gameOver = false;
     countdownActive = false;
     countdownStartTime = 0;
-    activeStart = 1;
+    activeStart = Math.floor(Math.random() * 3);
     diversion = null;
-    diversionCooldown = 5500;
+    diversionCooldown = 3500 + Math.random() * 4500;
     mergeBannerText = '';
     mergeBannerTimer = 0;
     lampposts = [];

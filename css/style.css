@@ -362,6 +362,7 @@ canvas {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     max-width: 90%; /* Ensure content doesn't stretch too wide */
     width: 400px; /* Provide a sensible max width */
+    box-sizing: border-box;
 }
 .overlay-content h2 {
     font-size: clamp(1.2rem, 4.5vw, 1.6rem);
@@ -389,6 +390,41 @@ canvas {
     background-color: #38a169;
     transform: translateY(-2px);
     box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
+}
+@media (max-width: 767px) {
+    .overlay-content {
+        width: min(84vw, 290px);
+        padding: 16px 14px;
+        border-radius: 12px;
+    }
+    .overlay-content h2 {
+        font-size: 1rem;
+        margin: 0 0 10px;
+    }
+    .overlay-content p {
+        font-size: 0.65rem;
+        line-height: 1.5;
+        margin: 0 0 8px;
+    }
+    .overlay-content > span {
+        display: block;
+        font-size: 0.55rem !important;
+        margin-top: 6px !important;
+    }
+    .overlay-content br {
+        display: none;
+    }
+    .overlay-content .game-button {
+        font-size: 0.6rem;
+        padding: 6px 10px;
+        margin: 8px auto 0 !important;
+    }
+    .overlay-content button {
+        display: block;
+        margin: 10px auto 0;
+        padding: 9px 18px;
+        font-size: 0.72rem;
+    }
 }
 
 /* New styles for the start screen overlay */
