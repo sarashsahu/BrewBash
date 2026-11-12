@@ -4,99 +4,187 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Brew Bash</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         /* Import the 'Press Start 2P' font for a video game feel */
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
         
         body {
-            /* Apply the video game font to the entire body */
             font-family: 'Press Start 2P', cursive;
-            background-color: #1a202c;
+            background: radial-gradient(circle at top, #1e293b 0%, #0f172a 75%);
             color: #e2e8f0;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
-            min-height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
             margin: 0;
-            padding: 10px; /* Added padding for responsiveness */
-            box-sizing: border-box; /* Ensures padding is included in element's total width/height */
-            flex-direction: column; /* Ensure vertical stacking for game wrapper and copyright */
+            padding: 8px;
+            gap: 6px;
+            box-sizing: border-box;
         }
         .game-wrapper {
             display: flex;
-            flex-direction: column; /* Default to column for small screens */
+            flex-direction: column;
             align-items: center;
-            gap: 20px;
-            background-color: #2d3748;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
-            max-width: 95vw; /* Ensure it doesn't exceed 95% of viewport width */
-            width: fit-content; /* Allow content to dictate width */
-            margin: auto;
+            gap: 8px;
+            background-color: #1e293b;
+            border: 2px solid #334155;
+            padding: 10px;
+            border-radius: 16px;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+            width: 100%;
+            max-width: 480px;
+            flex: 1;
+            min-height: 0;
+            box-sizing: border-box;
             position: relative;
             z-index: 10;
-        }
-        @media (min-width: 768px) {
-            .game-wrapper {
-                flex-direction: row; /* Row for larger screens */
-                /* max-width and width settings are handled by base styles */
-            }
         }
 
         .main-game-area {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 10px;
-            max-width: 100%; /* Ensure it's responsive */
-            min-width: 200px; /* Prevent it from becoming too small */
+            gap: 8px;
+            width: 100%;
+            flex: 1;
+            min-width: 0;
+            min-height: 0;
+        }
+
+        .canvas-frame {
+            flex: 1;
+            min-height: 160px;
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid #334155;
+            background-color: #0b1120;
+            box-sizing: border-box;
         }
 
         canvas {
-            background-color: #000;
             display: block;
-            border-radius: 10px;
-            width: 100%; /* Set width to 100% of its parent container */
-            height: 425px; /* Set a fixed height for the canvas */
-            object-fit: fill; /* This will stretch the content to fill the canvas */
+            width: 100%;
+            height: 100%;
         }
 
         .control-panel {
+            order: -1;
+            width: 100%;
+            flex-shrink: 0;
+            box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
-            background-color: #4a5568;
-            padding: 20px;
-            border-radius: 10px;
-            max-width: 100%; /* Ensure it's responsive */
-            min-width: 200px; /* Prevent it from becoming too small */
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-            flex-grow: 1; /* Allows it to take up available space on larger screens */
+            gap: 8px;
         }
 
-        /* Adjusted styling for the main game title */
         .game-title {
-            font-size: 1.2rem; /* Increased font size for prominence */
+            font-size: clamp(0.95rem, 3.5vw, 1.3rem);
             font-weight: normal;
-            margin-bottom: -5px; /* Space below title */
-            color: #e2e8f0; /* Lighter color for visibility */
+            margin: 0;
+            color: #facc15;
+            text-shadow: 0 2px 10px rgba(250, 204, 21, 0.25);
+            letter-spacing: 1px;
             text-align: center;
-            width: 100%; /* Ensure it takes full width for centering */
+            width: 100%;
         }
 
         .stats-container {
             width: 100%;
+            box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            margin-bottom: -5px; /* Reduced space between stats and canvas */
+            gap: 7px;
             padding: 10px;
-            background-color: #2d3748;
+            background-color: #0f172a;
+            border: 1px solid #334155;
             border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        .desktop-hint {
+            display: none;
+        }
+        .site-footer {
+            flex-shrink: 0;
+            font-size: 0.6rem;
+            color: #64748b;
+            text-align: center;
+            padding: 2px 0;
+        }
+
+        @media (min-width: 768px) {
+            body {
+                padding: 14px;
+                gap: 8px;
+            }
+            .game-wrapper {
+                flex-direction: row;
+                align-items: stretch;
+                width: min(96vw, 1440px);
+                max-width: none;
+                padding: 16px;
+                gap: 16px;
+            }
+            .main-game-area {
+                height: 100%;
+            }
+            .mobile-controls {
+                display: none !important;
+            }
+            .control-panel {
+                order: 0;
+                width: 290px;
+                height: 100%;
+                flex-shrink: 0;
+                background-color: #0f172a;
+                border: 1px solid #334155;
+                padding: 20px;
+                border-radius: 12px;
+                gap: 18px;
+                overflow-y: auto;
+            }
+            .game-title {
+                padding-bottom: 14px;
+                border-bottom: 2px solid #1e293b;
+            }
+            .stats-container {
+                background-color: #1e293b;
+                gap: 14px;
+                padding: 14px;
+            }
+            .desktop-hint {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                margin-top: auto;
+                padding: 14px;
+                background-color: #1e293b;
+                border: 1px solid #334155;
+                border-radius: 10px;
+                font-size: 0.62rem;
+                color: #94a3b8;
+                text-align: center;
+                line-height: 1.7;
+            }
+            .desktop-hint p {
+                margin: 0;
+            }
+            .key-row {
+                display: flex;
+                justify-content: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .keycap {
+                background-color: #0f172a;
+                color: #e2e8f0;
+                border: 1px solid #475569;
+                border-bottom-width: 3px;
+                border-radius: 5px;
+                padding: 4px 7px;
+                font-size: 0.6rem;
+            }
         }
         .stats-item {
             display: flex;
@@ -171,19 +259,21 @@
         .mobile-button {
             background-color: #4299e1;
             color: white;
-            padding: 15px 10px; /* Adjusted padding for better responsiveness */
+            padding: 14px 10px;
             border-radius: 8px;
-            font-size: 1.2rem; /* Adjusted for pixel font readability */
+            font-size: 1.2rem;
             font-weight: bold;
             cursor: pointer;
             transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
             border: none;
-            flex: 1; /* Make buttons take equal space */
+            flex: 1;
             display: flex;
             justify-content: center;
             align-items: center;
             touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
         }
         .mobile-button:hover:not(:disabled) {
             background-color: #dd6b20;
@@ -217,12 +307,12 @@
             width: 400px; /* Provide a sensible max width */
         }
         .overlay-content h2 {
-            font-size: 1.6rem; /* Adjusted for pixel font readability */
+            font-size: clamp(1.2rem, 4.5vw, 1.6rem);
             color: #e2e8f0;
             margin-bottom: 15px;
         }
         .overlay-content p {
-            font-size: 0.9rem; /* Adjusted for pixel font readability */
+            font-size: clamp(0.75rem, 2.8vw, 0.9rem);
             color: #cbd5e0;
             margin-bottom: 20px;
         }
@@ -266,14 +356,14 @@
         }
 
         #startScreenOverlay h1 {
-            font-size: 2.5rem; /* Slightly adjusted for better scaling */
+            font-size: clamp(1.5rem, 6vw, 2.5rem);
             margin-bottom: 20px;
             color: #4299e1;
             animation: pulse 1.5s infinite alternate;
         }
 
         #startScreenOverlay p {
-            font-size: 1.1rem; /* Slightly adjusted for better scaling */
+            font-size: clamp(0.75rem, 3vw, 1.1rem);
             margin-top: 10px;
             color: #a0aec0;
         }
@@ -281,20 +371,6 @@
         @keyframes pulse {
             0% { transform: scale(1); }
             100% { transform: scale(1.05); }
-        }
-        /* Added new style for the Developed By section wrapper for better alignment */
-        .developed-by-section {
-            display: flex;
-            flex-direction: column;
-            align-items: center; /* Center items horizontally */
-            margin-top: 5px; /* Space from elements above */
-            width: 100%; /* Ensure it spans the width of its parent to center content */
-        }
-        .developed-by-section .game-button {
-            flex: none; /* Override flex: 1 from original .game-button */
-            width: fit-content; /* Let the button size to its content */
-            padding: 8px 15px; /* Adjust padding as needed */
-            margin-top: 5px; /* Small space between text and button */
         }
     </style>
 </head>
@@ -308,7 +384,19 @@
 
     <div class="game-wrapper">
         <div class="main-game-area">
-            
+            <div id="canvasFrame" class="canvas-frame">
+                <canvas id="roadCanvas"></canvas>
+            </div>
+
+            <div class="mobile-controls">
+                <button id="moveLeftBtn" class="mobile-button" aria-label="Move Left">&lt;</button>
+                <button id="moveRightBtn" class="mobile-button" aria-label="Move Right">&gt;</button>
+            </div>
+        </div>
+
+        <aside class="control-panel">
+            <h2 class="game-title">Brew Bash</h2>
+
             <div class="stats-container">
                 <div class="stats-item">
                     <span>Score :</span>
@@ -316,34 +404,43 @@
                 </div>
                 <div class="stats-item">
                     <span>Speed :</span>
-                    <span id="hudSpeed">0 km/h</span>
+                    <span id="hudSpeed">100 km/h</span>
+                </div>
+                <div class="stats-item">
+                    <span>Pace :</span>
+                    <div class="progress-bar">
+                        <div id="speedBarFill" class="progress-fill" style="width: 20%; background-color: #38bdf8;"></div>
+                    </div>
                 </div>
                 <div class="stats-item">
                     <span>Health :</span>
-                <div class="progress-bar">
-                    <div id="healthBarFill" class="progress-fill" style="width: 100%; background-color: limegreen;"></div>
+                    <div class="progress-bar">
+                        <div id="healthBarFill" class="progress-fill" style="width: 100%; background-color: limegreen;"></div>
+                    </div>
                 </div>
-                </div>
-                <div class="button-group">
-                    <button id="playBtn" class="game-button" title="Play"><i class="fas fa-play"></i></button>
-                    <button id="pauseBtn" class="game-button" disabled title="Pause"><i class="fas fa-pause"></i></button>
-                    <button id="restartBtn" class="game-button" title="Restart"><i class="fas fa-redo"></i></button>
-                </div>
-            
-            <canvas id="roadCanvas" height="425"></canvas>
-            
-            <div class="mobile-controls">
-                <button id="moveLeftBtn" class="mobile-button"><</button>
-                <button id="moveRightBtn" class="mobile-button">></button>
-            </div>
-            </div>      
-
-            <div class="developed-by-section">
-                <h2 class="game-title">Brew Bash</h2>
-
             </div>
 
-        </div>       
+            <div class="button-group">
+                <button id="playBtn" class="game-button" title="Play"><i class="fas fa-play"></i></button>
+                <button id="pauseBtn" class="game-button" disabled title="Pause"><i class="fas fa-pause"></i></button>
+                <button id="restartBtn" class="game-button" title="Restart"><i class="fas fa-redo"></i></button>
+            </div>
+
+            <div class="desktop-hint">
+                <p>Steer</p>
+                <div class="key-row">
+                    <span class="keycap">A</span>
+                    <span class="keycap">D</span>
+                    <span>/</span>
+                    <span class="keycap">&larr;</span>
+                    <span class="keycap">&rarr;</span>
+                </div>
+                <p>Play / Pause</p>
+                <div class="key-row">
+                    <span class="keycap">Space</span>
+                </div>
+            </div>
+        </aside>
     </div>
 
     <div id="nameInputOverlay" class="overlay">
@@ -360,43 +457,34 @@
             <button id="closeOverlayBtn">Try Again!</button>
         </div>
     </div>
-    <div style="font-size: 0.7rem; color: #718096; text-align: center; margin-top: 20px;">
+    <div class="site-footer">
         All Rights Reserved. Copyright &copy; 2025 
         <a href="mailto:sarashsahu2016@gmail.com" style="color: #4299e1; text-decoration: none;">sarashsahu</a>.
     </div>
 
-    <audio id="backgroundMusic" loop>
-        <source src="background_music.mp3" type="audio/mpeg">
-        Your browser does not support the audio element.
-    </audio>
-
     <script>
+        const canvasFrame = document.getElementById('canvasFrame');
         const canvas = document.getElementById('roadCanvas');
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { alpha: false });
 
-        // Set canvas dimensions to match its rendered size (from CSS).
-        // This will now get the 450px height from the HTML attribute if set,
-        // or the CSS height if the attribute is not present.
-        canvas.width = canvas.offsetWidth; // This correctly gets width from CSS
-        // canvas.height = canvas.offsetHeight; // This line is now redundant for height if HTML attribute is used,
-                                            // but harmless as it will read the 450px.
-                                            // Leaving it in for consistency with the width.
+        const CAR_BLINK_DURATION = 1500;
+        const CAR_BLINK_INTERVAL = 100;
+        const SPEED_CYCLE = [5.0, 4.5, 4.0, 4.5];
 
-        // Recalculate roadWidth based on dynamic canvas width
-        const roadWidth = canvas.width * 0.9; 
-        
-        const centerX = canvas.width / 2;
-        const carWidth = 50;
-        const carHeight = 110;
-        const carY = canvas.height - carHeight - 20; // 20px from the bottom
-        
-        // Adjusted carBaseX to center the car on the 325px road
-        const carBaseX = centerX - roadWidth / 2; 
-        // maxOffset remains roadWidth - carWidth
-        const maxOffset = roadWidth - carWidth; 
+        let carWidth = 46;
+        let carHeight = 102;
+        let brewWidth = 22;
+        let brewHeight = 33;
+        let brewRadius = 10;
+        let heartSize = 24;
+        let baseCarMoveSpeed = 400;
+        let baseObstacleSpeed = 200;
 
-        const baseCarMoveSpeed = 400;
-        const baseObstacleSpeed = 200;
+        let roadWidth = 0;
+        let centerX = 0;
+        let carBaseX = 0;
+        let maxOffset = 0;
+        let carY = 0;
 
         let carOffsetX = 0;
         let dashOffset = 0;
@@ -405,24 +493,15 @@
         let gameOver = false;
         let lampposts = [];
         let gameSpeedMultiplier = 1;
-        let lastLamppostY = -200;
         const keys = { left: false, right: false };
         let healthDrop = null;
+        let heartCooldown = 8000;
         let animationId = null;
         let paused = true;
         let countdownActive = false;
         let countdownStartTime = 0;
-
-        let healthDrop25PercentGiven = false;
-
-        let carBlinkActive = false;
-        let carBlinkStartTime = 0;
-        const CAR_BLINK_DURATION = 1500;
-        const CAR_BLINK_INTERVAL = 100;
-
-        let blindEffectActive = false;
-        let blindEffectStartTime = 0;
-        const BLIND_EFFECT_DURATION = 2000;
+        let carBlinkRemaining = 0;
+        let lastTimestamp = 0;
 
         const nameOverlay = document.getElementById('nameInputOverlay');
         const finalScoreSpan = document.getElementById('finalScore');
@@ -431,13 +510,10 @@
         const pauseBtn = document.getElementById('pauseBtn');
         const restartBtn = document.getElementById('restartBtn');
         const startScreenOverlay = document.getElementById('startScreenOverlay');
-
         const hudScore = document.getElementById('hudScore');
         const hudSpeed = document.getElementById('hudSpeed');
-        const speedBarFill = document.getElementById('speedBarFill'); // This ID is not present in HTML, consider adding it for speed bar visual.
-        const hudHealthValue = document.getElementById('hudHealthValue'); // This ID is not present in HTML, consider adding it to display health value.
+        const speedBarFill = document.getElementById('speedBarFill');
         const healthBarFill = document.getElementById('healthBarFill');
-
         const moveLeftBtn = document.getElementById('moveLeftBtn');
         const moveRightBtn = document.getElementById('moveRightBtn');
 
@@ -445,97 +521,148 @@
         let beerImageLoaded = false;
         let heartImageLoaded = false;
 
-        const carImage = new Image();
-        carImage.src = 'car.png';
-        carImage.onload = () => carImageLoaded = true;
-        carImage.onerror = () => {
-            console.error("Failed to load car image, using fallback.");
-            carImageLoaded = false;
-        };
+        let carSprite = null;
+        let beerSprite = null;
+        let heartSprite = null;
 
-        const beerImage = new Image();
-        beerImage.src = 'beer.png';
-        beerImage.onload = () => beerImageLoaded = true;
-        beerImage.onerror = () => {
-            console.error("Failed to load beer image, using fallback.");
-            beerImageLoaded = false;
-        };
-
-        const heartImage = new Image();
-        heartImage.src = 'heart.png';
-        heartImage.onload = () => heartImageLoaded = true;
-        heartImage.onerror = () => {
-            console.error("Failed to load heart image, using fallback.");
-            heartImageLoaded = false;
-        };
-
-        const backgroundMusic = document.getElementById('backgroundMusic');
-        const crashSound = new Audio('crash.mp3');
-        crashSound.volume = 0.5;
-        crashSound.onerror = () => console.error("Failed to load crash sound.");
-
-        const gameOverSound = new Audio('gameover.mp3');
-        gameOverSound.volume = 0.5;
-        gameOverSound.onerror = () => console.error("Failed to load game over sound.");
-
-        const collectSound = new Audio('health.mp3');
-        collectSound.volume = 0.5;
-        collectSound.onerror = () => console.error("Failed to load collect sound.");
-
-        const defaultBackgroundMusicVolume = 0.3;
-        const duckedBackgroundMusicVolume = 0.1;
-
-        backgroundMusic.volume = defaultBackgroundMusicVolume;
-
-        function duckBackgroundMusic() {
-            backgroundMusic.volume = duckedBackgroundMusicVolume;
+        function bakeSprite(img, w, h) {
+            if (!img.complete || img.naturalWidth === 0 || w <= 0 || h <= 0) return null;
+            const off = document.createElement('canvas');
+            off.width = w;
+            off.height = h;
+            off.getContext('2d').drawImage(img, 0, 0, w, h);
+            return off;
         }
 
-        function unduckBackgroundMusic() {
-            backgroundMusic.volume = defaultBackgroundMusicVolume;
+        function bakeAllSprites() {
+            carSprite = bakeSprite(carImage, carWidth, carHeight);
+            beerSprite = bakeSprite(beerImage, brewWidth, brewHeight);
+            heartSprite = bakeSprite(heartImage, heartSize, heartSize);
         }
 
-        crashSound.addEventListener('play', duckBackgroundMusic);
-        crashSound.addEventListener('ended', unduckBackgroundMusic);
-        gameOverSound.addEventListener('play', duckBackgroundMusic);
-        gameOverSound.addEventListener('ended', unduckBackgroundMusic);
-        collectSound.addEventListener('play', duckBackgroundMusic);
-        collectSound.addEventListener('ended', unduckBackgroundMusic);
+        function loadSprite(src, onLoad) {
+            const img = new Image();
+            img.onload = () => {
+                onLoad(true);
+                bakeAllSprites();
+                if (paused || countdownActive || gameOver) drawScene();
+            };
+            img.onerror = () => {
+                console.error(`Failed to load ${src}, using fallback.`);
+                onLoad(false);
+            };
+            img.src = src;
+            return img;
+        }
 
-        playBtn.addEventListener('click', () => {
-            // Only allow play if not game over and currently paused (and not already in countdown)
+        const carImage = loadSprite('car.png', loaded => { carImageLoaded = loaded; });
+        const beerImage = loadSprite('beer.png', loaded => { beerImageLoaded = loaded; });
+        const heartImage = loadSprite('heart.png', loaded => { heartImageLoaded = loaded; });
+
+        function loadSound(src) {
+            const audio = new Audio(src);
+            audio.volume = 0.5;
+            audio.onerror = () => console.error(`Failed to load ${src}.`);
+            return audio;
+        }
+
+        const crashSound = loadSound('crash.mp3');
+        const gameOverSound = loadSound('gameover.mp3');
+        const collectSound = loadSound('health.mp3');
+
+        function playSound(audio) {
+            audio.currentTime = 0;
+            audio.play().catch(() => {});
+        }
+
+        function clearKeys() {
+            keys.left = false;
+            keys.right = false;
+        }
+
+        function clampToRoad(x, margin = Math.max(20, brewWidth)) {
+            const roadLeft = centerX - roadWidth / 2;
+            return Math.max(roadLeft + margin, Math.min(roadLeft + roadWidth - margin, x));
+        }
+
+        function resizeCanvas() {
+            const prevMax = maxOffset;
+            const ratio = prevMax > 0 ? carOffsetX / prevMax : 0.5;
+            canvas.width = canvasFrame.clientWidth || 300;
+            canvas.height = canvasFrame.clientHeight || 400;
+
+            const scale = Math.max(0.85, Math.min(1.6, Math.min(canvas.width / 420, canvas.height / 520)));
+            carWidth = Math.round(46 * scale);
+            carHeight = Math.round(102 * scale);
+            brewWidth = Math.round(22 * scale);
+            brewHeight = Math.round(33 * scale);
+            brewRadius = brewWidth * 0.45;
+            heartSize = Math.round(24 * scale);
+
+            roadWidth = canvas.width * 0.9;
+            centerX = canvas.width / 2;
+            carBaseX = centerX - roadWidth / 2;
+            maxOffset = Math.max(0, roadWidth - carWidth);
+            carY = canvas.height - carHeight - Math.round(18 * scale);
+            carOffsetX = Math.max(0, Math.min(maxOffset, ratio * maxOffset));
+
+            baseCarMoveSpeed = roadWidth * 1.15;
+            baseObstacleSpeed = Math.max(190, Math.min(280, canvas.height * 0.36));
+
+            bakeAllSprites();
+            for (const l of lampposts) l.x = clampToRoad(l.x);
+            if (healthDrop && healthDrop.active) healthDrop.x = clampToRoad(healthDrop.x, heartSize);
+        }
+
+        function startCountdown() {
             if (!gameOver && paused && !countdownActive) {
                 countdownActive = true;
                 countdownStartTime = 0;
                 updateButtonStates();
-                requestAnimationFrame(countdownAnimation);
+                animationId = requestAnimationFrame(countdownAnimation);
             }
-        });
+        }
 
-        pauseBtn.addEventListener('click', () => {
-            if (!gameOver && !paused) {
-                paused = true;
-                backgroundMusic.pause();
-                if (animationId) cancelAnimationFrame(animationId);
-                updateButtonStates();
-            }
-        });
-
-        restartBtn.addEventListener('click', () => {
+        function returnToStartScreen() {
+            if (animationId) cancelAnimationFrame(animationId);
+            animationId = null;
             resetGame();
             paused = true;
-            backgroundMusic.pause();
-            backgroundMusic.currentTime = 0;
-            if (animationId) cancelAnimationFrame(animationId);
-            startScreenOverlay.style.display = 'flex'; // Show start screen on restart
+            startScreenOverlay.style.display = 'flex';
             updateButtonStates();
-        });
+            drawScene();
+        }
+
+        function togglePause() {
+            if (gameOver || countdownActive) return;
+            if (startScreenOverlay.style.display !== 'none') {
+                handleStartScreenClick();
+            } else if (paused) {
+                startCountdown();
+            } else {
+                paused = true;
+                clearKeys();
+                if (animationId) cancelAnimationFrame(animationId);
+                animationId = null;
+                updateButtonStates();
+            }
+        }
+
+        playBtn.addEventListener('click', startCountdown);
+        pauseBtn.addEventListener('click', togglePause);
+
+        restartBtn.addEventListener('click', returnToStartScreen);
+        closeOverlayBtn.addEventListener('click', returnToStartScreen);
 
         document.addEventListener('keydown', e => {
             const typing = ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
             if (!typing) {
                 if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
                 if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = true;
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    togglePause();
+                }
             }
         });
 
@@ -544,56 +671,76 @@
             if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = false;
         });
 
-        closeOverlayBtn.addEventListener('click', () => {
-            nameOverlay.style.display = 'none';
-            resetGame();
-            paused = true;
-            backgroundMusic.pause();
-            backgroundMusic.currentTime = 0;
-            startScreenOverlay.style.display = 'flex'; // Show start screen after game over and "Try Again"
-            updateButtonStates();
-            if (animationId) cancelAnimationFrame(animationId);
-        });
+        window.addEventListener('blur', clearKeys);
 
-        moveLeftBtn.addEventListener('touchstart', (e) => { e.preventDefault(); if (!gameOver && !paused && startScreenOverlay.style.display !== 'flex') keys.left = true; });
-        moveLeftBtn.addEventListener('touchend', (e) => { e.preventDefault(); keys.left = false; });
-        moveLeftBtn.addEventListener('mousedown', () => { if (!gameOver && !paused && startScreenOverlay.style.display !== 'flex') keys.left = true; });
-        moveLeftBtn.addEventListener('mouseup', () => { keys.left = false; });
-        moveLeftBtn.addEventListener('mouseleave', () => { keys.left = false; });
+        function bindMoveButton(btn, dir) {
+            const start = (e) => {
+                if (e.type === 'touchstart') e.preventDefault();
+                if (!gameOver && !paused && !countdownActive) keys[dir] = true;
+            };
+            const stop = (e) => {
+                if (e.type.startsWith('touch')) e.preventDefault();
+                keys[dir] = false;
+            };
+            btn.addEventListener('touchstart', start, { passive: false });
+            btn.addEventListener('touchend', stop, { passive: false });
+            btn.addEventListener('touchcancel', stop, { passive: false });
+            btn.addEventListener('mousedown', start);
+            btn.addEventListener('mouseup', stop);
+            btn.addEventListener('mouseleave', stop);
+        }
 
-        moveRightBtn.addEventListener('touchstart', (e) => { e.preventDefault(); if (!gameOver && !paused && startScreenOverlay.style.display !== 'flex') keys.right = true; });
-        moveRightBtn.addEventListener('touchend', (e) => { e.preventDefault(); keys.right = false; });
-        moveRightBtn.addEventListener('mousedown', () => { if (!gameOver && !paused && startScreenOverlay.style.display !== 'flex') keys.right = true; });
-        moveRightBtn.addEventListener('mouseup', () => { keys.right = false; });
-        moveRightBtn.addEventListener('mouseleave', () => { keys.right = false; }); 
+        bindMoveButton(moveLeftBtn, 'left');
+        bindMoveButton(moveRightBtn, 'right');
 
         function showGameOverOverlay() {
+            clearKeys();
             finalScoreSpan.textContent = score;
             nameOverlay.style.display = 'flex';
-            backgroundMusic.pause();
             updateButtonStates();
         }
 
         function updateButtonStates() {
-            // Play button is enabled if paused, not game over, and not in countdown
             playBtn.disabled = !paused || gameOver || countdownActive;
-            // Pause button is enabled if not paused, not game over, and not in countdown
             pauseBtn.disabled = paused || gameOver || countdownActive;
-            // Restart button is always enabled (to allow going back to start screen or restarting)
             restartBtn.disabled = false;
-
-            // Mobile controls are disabled if paused, game over, or in countdown
-            moveLeftBtn.disabled = paused || gameOver || countdownActive; 
+            moveLeftBtn.disabled = paused || gameOver || countdownActive;
             moveRightBtn.disabled = paused || gameOver || countdownActive;
         }
 
-        function spawnLamppost() {
-            const spacing = Math.random() * 150 + 200;
-            lastLamppostY -= spacing;
-            // Calculate X based on the centered road
+        function randomRoadX(margin = Math.max(20, brewWidth)) {
             const roadLeftEdge = centerX - roadWidth / 2;
-            const x = roadLeftEdge + Math.random() * (roadWidth - 40) + 20; // 20px padding from road edges
-            lampposts.push({ x, y: lastLamppostY, checked: false });
+            const usable = Math.max(0, roadWidth - margin * 2);
+            return roadLeftEdge + margin + Math.random() * usable;
+        }
+
+        function spawnBrewWave(baseY) {
+            const maxMulti = roadWidth >= carWidth * 4.5 ? 0.45 : 0.25;
+            const multiChance = Math.min(maxMulti, 0.15 + (gameSpeedMultiplier - 1) * 0.08);
+            const count = Math.random() < multiChance ? 2 : 1;
+
+            const minGap = carWidth * 2.0;
+            const placed = [];
+            for (let n = 0; n < count; n++) {
+                let x = null;
+                for (let attempt = 0; attempt < 10; attempt++) {
+                    const candidate = randomRoadX(brewWidth);
+                    if (placed.every(px => Math.abs(px - candidate) >= minGap)) {
+                        x = candidate;
+                        break;
+                    }
+                }
+                if (x === null) continue;
+                placed.push(x);
+                const drift = Math.random() < 0.2 ? (Math.random() - 0.5) * roadWidth * 0.1 : 0;
+                lampposts.push({
+                    x,
+                    y: baseY + (Math.random() - 0.5) * brewHeight * 0.5,
+                    vx: drift,
+                    speedFactor: 0.94 + Math.random() * 0.14,
+                    checked: false
+                });
+            }
         }
 
         function rectCircleColliding(cx, cy, r, rx, ry, rw, rh) {
@@ -607,59 +754,58 @@
         }
 
         function updateLampposts(deltaTime) {
-            if (!gameOver && (lampposts.length === 0 || canvas.height - lastLamppostY > 200)) { 
-                spawnLamppost();
+            if (!gameOver && lampposts.length < 10) {
+                if (lampposts.length === 0) {
+                    spawnBrewWave(-brewHeight);
+                } else {
+                    let topY = Infinity;
+                    for (const l of lampposts) {
+                        if (l.y < topY) topY = l.y;
+                    }
+                    if (topY >= 0) {
+                        const spacing = Math.max(220, canvas.height * (0.38 + Math.random() * 0.28));
+                        spawnBrewWave(topY - spacing);
+                    }
+                }
             }
 
+            const roadLeft = centerX - roadWidth / 2 + brewWidth * 0.6;
+            const roadRight = centerX + roadWidth / 2 - brewWidth * 0.6;
             const carX = carBaseX + carOffsetX;
+            const baseStep = (gameSpeedMultiplier * baseObstacleSpeed / 1000) * deltaTime;
+
             for (let i = lampposts.length - 1; i >= 0; i--) {
                 const l = lampposts[i];
-                l.y += (gameSpeedMultiplier * baseObstacleSpeed / 1000) * deltaTime;
-
-                if (beerImageLoaded) {
-                    const imgWidth = 20;
-                    const imgHeight = 30;
-                    ctx.drawImage(beerImage, l.x - imgWidth / 2, l.y - imgHeight / 2, imgWidth, imgHeight);
-                } else {
-                    ctx.beginPath();
-                    ctx.arc(l.x, l.y, 6, 0, Math.PI * 2);
-                    ctx.fillStyle = '#FFD700';
-                    ctx.fill();
+                l.y += baseStep * l.speedFactor;
+                if (l.vx) {
+                    l.x += (l.vx / 1000) * deltaTime;
+                    if (l.x <= roadLeft) { l.x = roadLeft; l.vx = Math.abs(l.vx); }
+                    else if (l.x >= roadRight) { l.x = roadRight; l.vx = -Math.abs(l.vx); }
                 }
 
-                if (!l.checked && !carBlinkActive && rectCircleColliding(l.x, l.y, 10, carX, carY, carWidth, carHeight)) {
+                if (!l.checked && carBlinkRemaining <= 0 && rectCircleColliding(l.x, l.y, brewRadius, carX, carY, carWidth, carHeight)) {
                     l.checked = true;
-                    crashSound.currentTime = 0;
-                    crashSound.play();
-                    health -= 25;
-
-                    carBlinkActive = true;
-                    carBlinkStartTime = Date.now();
-
-                    updateHUDDisplay();
+                    health = Math.max(0, health - 25);
 
                     if (health <= 0) {
-                        health = 0;
                         gameOver = true;
                         paused = true;
                         crashSound.pause();
                         crashSound.currentTime = 0;
-                        gameOverSound.currentTime = 0;
-                        gameOverSound.play();
+                        playSound(gameOverSound);
                         if (animationId) cancelAnimationFrame(animationId);
+                        animationId = null;
+                        updateHUDDisplay();
                         showGameOverOverlay();
+                        return;
                     }
+
+                    playSound(crashSound);
+                    carBlinkRemaining = CAR_BLINK_DURATION;
+                    updateHUDDisplay();
                 }
 
-                if (health <= 25 && !healthDrop25PercentGiven && (!healthDrop || !healthDrop.active)) { // Condition changed to <= 25
-                    // Calculate dropX based on the centered road
-                    const roadLeftEdge = centerX - roadWidth / 2;
-                    const dropX = roadLeftEdge + Math.random() * (roadWidth - 40) + 20; 
-                    healthDrop = { x: dropX, y: -50, active: true };
-                    healthDrop25PercentGiven = true;
-                }
-
-                if (l.y > canvas.height + 10) {
+                if (l.y > canvas.height + brewHeight) {
                     lampposts.splice(i, 1);
                     if (!l.checked && !gameOver) {
                         score += 50;
@@ -671,112 +817,122 @@
         }
 
         function updateHealthDrop(deltaTime) {
-            if (!healthDrop || !healthDrop.active) return;
-
-            healthDrop.y += (gameSpeedMultiplier * baseObstacleSpeed / 1000) * deltaTime;
-
-            if (heartImageLoaded) {
-                const imgWidth = 20;
-                const imgHeight = 20;
-                ctx.drawImage(heartImage, healthDrop.x - imgWidth / 2, healthDrop.y - imgHeight / 2, imgWidth, imgHeight);
-            } else {
-                ctx.font = '24px serif';
-                ctx.textAlign = 'center';
-                ctx.fillText('❤️', healthDrop.x, healthDrop.y);
-            }
-
-            const carX = carBaseX + carOffsetX;
-            // Simplified collision detection for health drop
-            if (
-                healthDrop.active &&
-                healthDrop.y + 10 >= carY && // Check if bottom of health drop touches car top
-                healthDrop.y - 10 <= carY + carHeight && // Check if top of health drop touches car bottom
-                healthDrop.x + 10 >= carX && // Check if right of health drop touches car left
-                healthDrop.x - 10 <= carX + carWidth // Check if left of health drop touches car right
-            ) {
-                const dropAmount = 25;
-                health = Math.min(health + dropAmount, 100);
-                healthDrop.active = false;
-                collectSound.currentTime = 0;
-                collectSound.play();
-                updateHUDDisplay();
-            }
-
-            if (healthDrop.y > canvas.height) {
-                healthDrop.active = false;
-            }
-        }
-
-        function getSpeedForScore(score) {
-            if (score < 500) return 1.0;
-            if (score < 1000) return 1.2;
-            if (score < 2000) return 1.4;
-            if (score < 3000) return 1.6;
-            if (score < 4000) return 1.8;
-            if (score < 5000) return 2.0;
-            if (score < 6000) return 2.2;
-            if (score < 7000) return 2.4;
-            if (score < 8000) return 2.6;
-            if (score < 10000) return 2.8;
-            if (score < 12000) return 3.0;
-            if (score < 14000) return 3.2;
-            if (score < 16000) return 3.4;
-            if (score < 18000) return 3.6;
-            if (score < 20000) return 3.8;
-
-            return 4.0;
-        }
-
-        function drawRoad() {
-            // Draw the road centered horizontally with the new roadWidth
-            ctx.fillStyle = '#222';
-            ctx.fillRect(centerX - roadWidth / 2, 0, roadWidth, canvas.height); 
-
-            ctx.strokeStyle = '#ccc';
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            // Left border of the road
-            ctx.moveTo(centerX - roadWidth / 2, 0); 
-            ctx.lineTo(centerX - roadWidth / 2, canvas.height); 
-            // Right border of the road
-            ctx.moveTo(centerX + roadWidth / 2, 0); 
-            ctx.lineTo(centerX + roadWidth / 2, canvas.height); 
-            ctx.stroke();
-
-            ctx.setLineDash([30, 30]);
-            ctx.strokeStyle = 'white';
-            ctx.lineWidth = 2;
-            ctx.lineDashOffset = -dashOffset;
-            ctx.beginPath();
-            ctx.moveTo(centerX, 0);
-            ctx.lineTo(centerX, canvas.height); 
-            ctx.stroke();
-            ctx.setLineDash([]);
-        }
-
-        function drawCar() {
-            const x = carBaseX + carOffsetX;
-
-            if (carBlinkActive) {
-                const currentTime = Date.now();
-                const elapsedTime = currentTime - carBlinkStartTime;
-
-                if (elapsedTime > CAR_BLINK_DURATION) {
-                    carBlinkActive = false;
-                } else {
-                    if (Math.floor(elapsedTime / CAR_BLINK_INTERVAL) % 2 === 0) {
-                        if (carImageLoaded) {
-                            ctx.drawImage(carImage, x, carY, carWidth, carHeight);
-                        } else {
-                            ctx.fillStyle = 'red';
-                            ctx.fillRect(x, carY, carWidth, carHeight);
-                        }
+            if (!gameOver && (!healthDrop || !healthDrop.active)) {
+                heartCooldown -= deltaTime;
+                if (heartCooldown <= 0) {
+                    if (health < 100) {
+                        healthDrop = {
+                            x: randomRoadX(heartSize),
+                            y: -heartSize,
+                            speedFactor: 0.85 + Math.random() * 0.25,
+                            swayPhase: Math.random() * Math.PI * 2,
+                            swayAmp: Math.random() * 25 + 15,
+                            active: true
+                        };
+                        heartCooldown = (health <= 25 ? 4500 : 8000) + Math.random() * 6000;
+                    } else {
+                        heartCooldown = 2000 + Math.random() * 2000;
                     }
-                    return;
                 }
             }
 
-            if (carImageLoaded) {
+            if (!healthDrop || !healthDrop.active) return;
+
+            const step = (gameSpeedMultiplier * baseObstacleSpeed / 1000) * deltaTime * healthDrop.speedFactor;
+            healthDrop.y += step;
+            healthDrop.swayPhase += deltaTime * 0.004;
+            healthDrop.x = clampToRoad(healthDrop.x + Math.sin(healthDrop.swayPhase) * healthDrop.swayAmp * (deltaTime / 1000), heartSize);
+
+            const halfHeart = heartSize / 2;
+            const carX = carBaseX + carOffsetX;
+            if (
+                healthDrop.y + halfHeart >= carY &&
+                healthDrop.y - halfHeart <= carY + carHeight &&
+                healthDrop.x + halfHeart >= carX &&
+                healthDrop.x - halfHeart <= carX + carWidth
+            ) {
+                health = Math.min(health + 25, 100);
+                healthDrop.active = false;
+                playSound(collectSound);
+                updateHUDDisplay();
+            } else if (healthDrop.y > canvas.height + heartSize) {
+                healthDrop.active = false;
+            }
+        }
+
+        function getSpeedForScore(currentScore) {
+            if (currentScore < 8000) {
+                return 1.0 + Math.floor(currentScore / 500) * 0.25;
+            }
+            const step = Math.floor((currentScore - 8000) / 500);
+            return SPEED_CYCLE[step % SPEED_CYCLE.length];
+        }
+
+        function drawRoad() {
+            const roadLeft = centerX - roadWidth / 2;
+            ctx.fillStyle = '#0f291e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#1e2430';
+            ctx.fillRect(roadLeft, 0, roadWidth, canvas.height);
+
+            const curbW = 5;
+            ctx.fillStyle = '#e2e8f0';
+            ctx.fillRect(roadLeft - curbW / 2, 0, curbW, canvas.height);
+            ctx.fillRect(roadLeft + roadWidth - curbW / 2, 0, curbW, canvas.height);
+
+            ctx.fillStyle = '#ef4444';
+            for (let y = (dashOffset % 40) - 40; y < canvas.height; y += 40) {
+                ctx.fillRect(roadLeft - curbW / 2, y, curbW, 20);
+                ctx.fillRect(roadLeft + roadWidth - curbW / 2, y, curbW, 20);
+            }
+
+            const lanes = roadWidth >= 500 ? 3 : 2;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            for (let lane = 1; lane < lanes; lane++) {
+                const lx = Math.round(roadLeft + (roadWidth * lane) / lanes) - 1;
+                for (let y = (dashOffset % 60) - 60; y < canvas.height; y += 60) {
+                    ctx.fillRect(lx, y, 2, 30);
+                }
+            }
+        }
+
+        function drawLampposts() {
+            for (const l of lampposts) {
+                if (beerSprite) {
+                    ctx.drawImage(beerSprite, l.x - brewWidth / 2, l.y - brewHeight / 2);
+                } else if (beerImageLoaded) {
+                    ctx.drawImage(beerImage, l.x - brewWidth / 2, l.y - brewHeight / 2, brewWidth, brewHeight);
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(l.x, l.y, brewRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = '#FFD700';
+                    ctx.fill();
+                }
+            }
+        }
+
+        function drawHealthDrop() {
+            if (!healthDrop || !healthDrop.active) return;
+            if (heartSprite) {
+                ctx.drawImage(heartSprite, healthDrop.x - heartSize / 2, healthDrop.y - heartSize / 2);
+            } else if (heartImageLoaded) {
+                ctx.drawImage(heartImage, healthDrop.x - heartSize / 2, healthDrop.y - heartSize / 2, heartSize, heartSize);
+            } else {
+                ctx.font = `${heartSize}px serif`;
+                ctx.textAlign = 'center';
+                ctx.fillText('❤️', healthDrop.x, healthDrop.y);
+            }
+        }
+
+        function drawCar() {
+            if (carBlinkRemaining > 0 && Math.floor(carBlinkRemaining / CAR_BLINK_INTERVAL) % 2 === 1) {
+                return;
+            }
+            const x = carBaseX + carOffsetX;
+            if (carSprite) {
+                ctx.drawImage(carSprite, x, carY);
+            } else if (carImageLoaded) {
                 ctx.drawImage(carImage, x, carY, carWidth, carHeight);
             } else {
                 ctx.fillStyle = 'red';
@@ -784,38 +940,26 @@
             }
         }
 
+        function drawScene() {
+            drawRoad();
+            drawLampposts();
+            drawHealthDrop();
+            drawCar();
+        }
+
         function updateHUDDisplay() {
             hudScore.textContent = score;
+            hudSpeed.textContent = `${Math.round(gameSpeedMultiplier * 100)} km/h`;
 
-            const kmPerHourBase = 100;
-            const actualSpeed = Math.round(gameSpeedMultiplier * kmPerHourBase);
-            hudSpeed.textContent = `${actualSpeed} km/h`;
+            const pacePct = Math.min(100, (gameSpeedMultiplier / 5.0) * 100);
+            speedBarFill.style.width = `${pacePct}%`;
+            let speedBarColor = '#38bdf8';
+            if (gameSpeedMultiplier >= 4.5) speedBarColor = '#ef4444';
+            else if (gameSpeedMultiplier >= 3.0) speedBarColor = '#f97316';
+            else if (gameSpeedMultiplier >= 2.0) speedBarColor = '#facc15';
+            speedBarFill.style.backgroundColor = speedBarColor;
 
-            // There is no element with id `speedBarFill` in the provided HTML.
-            // If you want a speed bar, you need to add it to the HTML structure.
-            // Example: <div class="progress-bar"><div id="speedBarFill" class="progress-fill"></div></div>
-            // For now, this part will not function visually without the element.
-            if (speedBarFill) { // Check if the element exists before trying to access its style
-                const maxBarSpeed = getSpeedForScore(20000) * kmPerHourBase;
-                const speedPercentage = Math.min(100, (actualSpeed / maxBarSpeed) * 100);
-                speedBarFill.style.width = `${speedPercentage}%`;
-                let speedBarColor = 'lightgreen';
-                if (actualSpeed >= kmPerHourBase * 3.0) speedBarColor = 'red';
-                else if (actualSpeed >= kmPerHourBase * 2.0) speedBarColor = 'orange';
-                else if (actualSpeed >= kmPerHourBase * 1.5) speedBarColor = 'yellow';
-                speedBarFill.style.backgroundColor = speedBarColor;
-            }
-
-
-            // There is no element with id `hudHealthValue` in the provided HTML.
-            // If you want to display the health percentage as text, you need to add it.
-            // Example: <div class="stats-item"><span>Health:</span><span id="hudHealthValue">100%</span></div>
-            if (hudHealthValue) { // Check if the element exists
-                hudHealthValue.textContent = `${health}%`;
-            }
-            
-            const healthPercentage = (health / 100) * 100;
-            healthBarFill.style.width = `${healthPercentage}%`;
+            healthBarFill.style.width = `${health}%`;
             let healthBarColor = 'limegreen';
             if (health <= 25) healthBarColor = 'red';
             else if (health <= 50) healthBarColor = 'orange';
@@ -824,7 +968,6 @@
 
         function updateCar(deltaTime) {
             const movementAmount = (baseCarMoveSpeed / 1000) * deltaTime;
-
             if (keys.left) carOffsetX = Math.max(0, carOffsetX - movementAmount);
             if (keys.right) carOffsetX = Math.min(maxOffset, carOffsetX + movementAmount);
         }
@@ -833,27 +976,21 @@
             score = 0;
             health = 100;
             gameOver = false;
+            countdownActive = false;
+            countdownStartTime = 0;
             lampposts = [];
             gameSpeedMultiplier = getSpeedForScore(0);
-            lastLamppostY = -200;
-            // Reset car position to the left edge of the centered road
-            carOffsetX = 0; 
+            carOffsetX = maxOffset / 2;
             dashOffset = 0;
             healthDrop = null;
-            healthDrop25PercentGiven = false;
+            heartCooldown = 6000 + Math.random() * 6000;
+            carBlinkRemaining = 0;
+            clearKeys();
 
-            blindEffectActive = false;
-            blindEffectStartTime = 0;
-
-            carBlinkActive = false;
-            carBlinkStartTime = 0;
-
-            crashSound.pause();
-            crashSound.currentTime = 0;
-            gameOverSound.pause();
-            gameOverSound.currentTime = 0;
-            collectSound.pause();
-            collectSound.currentTime = 0;
+            for (const sound of [crashSound, gameOverSound, collectSound]) {
+                sound.pause();
+                sound.currentTime = 0;
+            }
 
             nameOverlay.style.display = 'none';
             updateButtonStates();
@@ -864,7 +1001,8 @@
             ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            ctx.font = 'bold 100px "Press Start 2P", cursive';
+            const fontSize = Math.min(100, Math.floor(canvas.width * 0.28));
+            ctx.font = `bold ${fontSize}px "Press Start 2P", cursive`;
             ctx.fillStyle = 'white';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -872,19 +1010,11 @@
         }
 
         function countdownAnimation(timestamp) {
-            if (countdownStartTime === 0) {
-                 countdownStartTime = timestamp;
-            }
-            
-            const elapsed = timestamp - countdownStartTime;
-            const remainingTime = 3000 - elapsed;
+            if (!countdownActive) return;
+            if (countdownStartTime === 0) countdownStartTime = timestamp;
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawRoad();
-            updateLampposts(0); // Update lampposts positions, but without collision or scoring during countdown
-            updateHealthDrop(0); // Update health drop position, but without collision during countdown
-            drawCar();
-            updateHUDDisplay();
+            const remainingTime = 3000 - (timestamp - countdownStartTime);
+            drawScene();
 
             if (remainingTime > 2000) {
                 drawCountdown(3);
@@ -895,71 +1025,59 @@
             } else {
                 countdownActive = false;
                 paused = false;
-                backgroundMusic.play();
                 updateButtonStates();
                 lastTimestamp = timestamp;
                 animate(timestamp);
                 return;
             }
-            requestAnimationFrame(countdownAnimation);
+            animationId = requestAnimationFrame(countdownAnimation);
         }
-
-        let lastTimestamp = 0;
 
         function handleStartScreenClick() {
             startScreenOverlay.style.display = 'none';
-            if (!gameOver && paused && !countdownActive) {
-                countdownActive = true;
-                countdownStartTime = 0;
-                updateButtonStates();
-                requestAnimationFrame(countdownAnimation);
-            }
+            startCountdown();
         }
 
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            if (paused || countdownActive || gameOver) drawScene();
+        });
+
         window.onload = () => {
-            updateButtonStates();
-            updateHUDDisplay();
+            resizeCanvas();
+            resetGame();
             startScreenOverlay.style.display = 'flex';
-            startScreenOverlay.addEventListener('click', handleStartScreenClick); 
-            paused = true; // Ensure game is paused on load
+            startScreenOverlay.addEventListener('click', handleStartScreenClick);
+            paused = true;
+            updateButtonStates();
+            drawScene();
         };
 
         function animate(timestamp) {
-            if (lastTimestamp === 0) {
-                lastTimestamp = timestamp;
-            }
-
+            if (lastTimestamp === 0) lastTimestamp = timestamp;
             if (paused || gameOver || countdownActive) return;
 
             const MAX_DELTA_TIME = 100;
             const deltaTime = Math.min(timestamp - lastTimestamp, MAX_DELTA_TIME);
             lastTimestamp = timestamp;
 
-            updateCar(deltaTime);
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            drawRoad();
-            updateLampposts(deltaTime);
-            updateHealthDrop(deltaTime);
-            drawCar();
-
-            if (blindEffectActive) {
-                const currentTime = Date.now();
-                const elapsedTime = currentTime - blindEffectStartTime;
-                if (elapsedTime < BLIND_EFFECT_DURATION) {
-                    const opacity = 0.8 * (1 - (elapsedTime / BLIND_EFFECT_DURATION));
-                    ctx.fillStyle = `rgba(0, 0, 0, ${opacity})`;
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                } else {
-                    blindEffectActive = false;
-                }
+            if (carBlinkRemaining > 0) {
+                carBlinkRemaining = Math.max(0, carBlinkRemaining - deltaTime);
             }
 
-            updateHUDDisplay();
+            updateCar(deltaTime);
+            updateLampposts(deltaTime);
+            updateHealthDrop(deltaTime);
+
+            if (gameOver) {
+                drawScene();
+                return;
+            }
 
             const dashSpeedFactor = 0.5;
-            dashOffset = (dashOffset + (gameSpeedMultiplier * baseObstacleSpeed / 1000) * deltaTime * dashSpeedFactor) % 60;
+            dashOffset = (dashOffset + (gameSpeedMultiplier * baseObstacleSpeed / 1000) * deltaTime * dashSpeedFactor) % 120;
+
+            drawScene();
 
             animationId = requestAnimationFrame(animate);
         }
